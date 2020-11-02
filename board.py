@@ -29,8 +29,10 @@ class Board2048:
         self.state[x, y] = number
         return self
 
-    def _apply_action_to_vector(self, vector: np.array) -> np.array:
+    def _reverse_vector(self, vector: np.array) -> np.array:
+        return np.flip(vector)
 
+    def _apply_action_to_vector(self, vector: np.array) -> np.array:
         vector = np.copy(vector)
         current = 0
 
@@ -71,13 +73,21 @@ class Board2048:
         return vector
 
     def up(self):
-        pass
+        result_matrix = np.apply_along_axis(self._apply_action_to_vector, axis=1, arr=self.state.T).T
+        if not np.equal(result_matrix,self.state).all():
+            self.state = result_matrix
+            self._populate_empty_cell()  
+        return self
 
     def down(self):
-        pass
+        result_matrix = np.apply_along_axis(lambda v: self._apply_action_to_vector(self._reverse_vector(v)), axis=1, arr=self.state.T)
+        result_matrix = np.apply_along_axis(self._reverse_vector, axis=1, arr=result_matrix).T
+        if not np.equal(result_matrix,self.state).all():
+            self.state = result_matrix
+            self._populate_empty_cell()  
+        return self
 
     def left(self):
-        # apply_along_axis(func1d, axis, arr, *args, **kwargs)
         result_matrix = np.apply_along_axis(self._apply_action_to_vector, axis=1, arr=self.state)
         if not np.equal(result_matrix,self.state).all():
             self.state = result_matrix
@@ -85,33 +95,35 @@ class Board2048:
         return self
 
     def right(self):
-        pass
+        result_matrix = np.apply_along_axis(lambda v: self._apply_action_to_vector(self._reverse_vector(v)), axis=1, arr=self.state)
+        result_matrix = np.apply_along_axis(self._reverse_vector, axis=1, arr=result_matrix)
+        if not np.equal(result_matrix,self.state).all():
+            self.state = result_matrix
+            self._populate_empty_cell()  
+        return self
+    
+    def perform_action(self, action):
+        action = action.lower()
+        actions = ["up", "down", "left","right"]
+        if action in actions:
+           move_to_perform = getattr(self, action) 
+           return move_to_perform()
+        raise ValueError(f"Action: {action} is invalid.")
+    
+    def _simple_score(self):
+        return self.state.flatten().sum(axis=0)
+    
+    def show(self):
+        print(f"Simple Score: {board._simple_score()}")
+        print(self)
+
 
 
 if __name__ == "__main__":
     board = Board2048()
+    board.show()
+    while x:=input("What is your next move: "):
+        board.perform_action(x)
+        board.show()
+    print(f"Final Score: {board._simple_score()}")
     print(board)
-    for i in range(100000):
-        print(i)
-        print(board.left())
-        print()
-    # examples = [
-    #     ([0, 0, 0, 0], [0, 0, 0, 0]),
-    #     ([0, 0, 0, 2], [2, 0, 0, 0]),
-    #     ([0, 0, 2, 2], [4, 0, 0, 0]),
-    #     ([2, 0, 0, 0], [2, 0, 0, 0]),
-    #     ([2, 0, 2, 0], [4, 0, 0, 0]),
-    #     ([2, 2, 2, 2], [4, 4, 0, 0]),
-    #     ([2, 2, 4, 4], [4, 8, 0, 0]),
-    #     ([2, 2, 0, 0], [4, 0, 0, 0]),
-    #     ([2, 0, 0, 2], [4, 0, 0, 0]),
-    #     ([0, 0, 2, 2], [4, 0, 0, 0]),
-    #     ([2, 4, 2, 4], [2, 4, 2, 4]),
-    #     ([2, 2, 4, 2], [4, 4, 2, 0]),
-    #     ([2, 4, 4, 2], [2, 8, 2, 0]),
-    #     ([2, 4, 4, 4], [2, 8, 4, 0]),
-    #     ([4, 8, 16, 32], [4, 8, 16, 32])
-    # ]
-    # for example in examples:
-    #     result = board._apply_action_to_vector(np.array(example[0]))
-    #     print(example[0], result, example[1], result == example[1])
