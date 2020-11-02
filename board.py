@@ -103,10 +103,10 @@ class Board2048:
         return self
     
     def perform_action(self, action):
-        action = action.lower()
-        actions = ["up", "down", "left","right"]
+        action = action.lower()[0]
+        actions = {"u":"up", "d":"down", "l":"left","r":"right"}
         if action in actions:
-           move_to_perform = getattr(self, action) 
+           move_to_perform = getattr(self, actions[action]) 
            return move_to_perform()
         raise ValueError(f"Action: {action} is invalid.")
     
