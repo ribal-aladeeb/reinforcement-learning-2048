@@ -48,13 +48,10 @@ def test_available_moves():
             [4,2,4,2],
             [2,4,2,4],
             [4,2,4,2],
-        ]), {} ),
+        ]), set({}) ),
     ]
 
     for configuration, possible_moves in pairs:
         board.state = configuration
-        print(f'for configuration:\n')
-        print(configuration)
-        print(f'\nthe func returns {boad.available_moves()} instead of {possible_moves}')
-        # (board.available_moves() == possible_moves) | grappa.should.be.true
+        (board.available_moves() == possible_moves) | grappa.should.be.true
         
