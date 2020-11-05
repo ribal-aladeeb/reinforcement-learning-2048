@@ -1,6 +1,6 @@
 from board import Board2048
 import grappa
-import numpy as np 
+import numpy as np
 
 def test_game_board():
     board = Board2048()
@@ -29,7 +29,7 @@ def test_game_board():
 
 def test_available_moves():
     board = Board2048(k=4, populate_empty_cells=False)
-    
+
     pairs = [
         (np.array([
             [2,4,8,0],
@@ -53,5 +53,7 @@ def test_available_moves():
 
     for configuration, possible_moves in pairs:
         board.state = configuration
-        (board.available_moves() == possible_moves) | grappa.should.be.true
-        
+        print(f'for configuration:\n')
+        print(configuration)
+        print(f'\nthe func returns {board.available_moves()} instead of {possible_moves}')
+        (set(board.available_moves().keys()) == possible_moves) | grappa.should.be.true
