@@ -2,6 +2,7 @@ from board import Board2048
 import grappa
 import numpy as np
 
+
 def test_game_board():
     board = Board2048()
     examples = [
@@ -32,23 +33,23 @@ def test_available_moves():
 
     pairs = [
         (np.array([
-            [2,4,8,0],
-            [0,0,0,0],
-            [2,4,16,32],
-            [0,0,0,0],
-        ]), {'up','down','right'}),
+            [2, 4, 8, 0],
+            [0, 0, 0, 0],
+            [2, 4, 16, 32],
+            [0, 0, 0, 0],
+        ]), {'up', 'down', 'right'}),
         (np.array([
-            [2,4,2,4],
-            [2,4,2,4],
-            [2,4,2,4],
-            [2,4,2,4],
-        ]), {'up','down',}),
+            [2, 4, 2, 4],
+            [2, 4, 2, 4],
+            [2, 4, 2, 4],
+            [2, 4, 2, 4],
+        ]), {'up', 'down', }),
         (np.array([
-            [2,4,2,4],
-            [4,2,4,2],
-            [2,4,2,4],
-            [4,2,4,2],
-        ]), set({}) ),
+            [2, 4, 2, 4],
+            [4, 2, 4, 2],
+            [2, 4, 2, 4],
+            [4, 2, 4, 2],
+        ]), set({})),
     ]
 
     for configuration, possible_moves in pairs:
