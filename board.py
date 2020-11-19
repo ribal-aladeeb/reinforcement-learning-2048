@@ -187,7 +187,6 @@ def basic_updown_algorithm(k=4):
         board.show(ignore_zeros=True)
         simple_score = board.simple_score()
     board.show()
-    print(board._action_history)
     return board
 
 
