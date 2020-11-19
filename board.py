@@ -7,7 +7,7 @@ import random
 class Board2048:
 
     def __init__(self, k: int = 4, populate_empty_cells=True):
-        self.state: np.array = np.zeros(shape=(k, k),dtype=int)
+        self.state: np.array = np.zeros(shape=(k, k), dtype=int)
         self._empty_spot_numbers: List[int] = [2, 4]
         self._mergescore = 0
         self._action_history = []
@@ -36,7 +36,7 @@ class Board2048:
         return np.isin(element, self.state).all()
 
     def __eq__(self, other: Board2048):
-        return (board.state == other.board).all() and self._action_history() == other._action_history()
+        return (self.state == other.state).all()  # and self._action_history() == other._action_history()
 
     def _populate_empty_cell(self) -> Board2048:
         """
@@ -89,8 +89,8 @@ class Board2048:
 
         return vector
 
-    def available_moves(self) -> Dict[str]:
-        moves = ['up', 'down', 'left','right']
+    def available_moves(self) -> Dict[str, Board2048]:
+        moves = ['up', 'down', 'left', 'right']
         mapping = dict()
 
         for move in moves:
@@ -121,7 +121,6 @@ class Board2048:
         board._board_state_history.append(board.state)
         return board
 
-
     def left(self) -> Board2048:
         board = self.clone()
         board._action_history.append('left')
@@ -137,7 +136,7 @@ class Board2048:
         board._action_history.append('right')
         result_matrix = np.apply_along_axis(lambda v: board._apply_action_to_vector(board._reverse_vector(v)), axis=1, arr=board.state)
         result_matrix = np.apply_along_axis(board._reverse_vector, axis=1, arr=result_matrix)
-        if not np.equal(result_matrix,board.state).all():
+        if not np.equal(result_matrix, board.state).all():
             board.state = result_matrix
             board._populate_empty_cell()
         board._board_state_history.append(board.state)
@@ -148,7 +147,7 @@ class Board2048:
         Returns the would-be state of the board if you were to save the state after performing the <action> argument
         '''
         action = action.lower()[0]
-        actions = {"u":"up", "d":"down", "l":"left","r":"right"}
+        actions = {"u": "up", "d": "down", "l": "left", "r": "right"}
 
         if action in actions:
             move_to_perform = getattr(self, actions[action])
@@ -171,26 +170,26 @@ class Board2048:
             print(self)
 
 
-
 def basic_updown_algorithm(k=4):
-	board = Board2048(k=k)
-	simple_score = board.simple_score()
-	while True:
-		board = board.peek_action("up")
-		board.show(ignore_zeros=True)
-		board = board.peek_action("left")
-		board.show(ignore_zeros=True)
-		if simple_score == board.simple_score():
-			board = board.peek_action('down')
-			board.show(ignore_zeros=True)
-			board = board.peek_action('right')
-			if simple_score == board.simple_score():
-				break
-		board.show(ignore_zeros=True)
-		simple_score = board.simple_score()
-	board.show()
-	print(board._action_history)
-	return board
+    board = Board2048(k=k)
+    simple_score = board.simple_score()
+    while True:
+        board = board.peek_action("up")
+        board.show(ignore_zeros=True)
+        board = board.peek_action("left")
+        board.show(ignore_zeros=True)
+        if simple_score == board.simple_score():
+            board = board.peek_action('down')
+            board.show(ignore_zeros=True)
+            board = board.peek_action('right')
+            if simple_score == board.simple_score():
+                break
+        board.show(ignore_zeros=True)
+        simple_score = board.simple_score()
+    board.show()
+    print(board._action_history)
+    return board
+
 
 if __name__ == "__main__":
     board = Board2048()
