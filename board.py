@@ -175,7 +175,10 @@ class Board2048:
             print(self)
 
     def flattened_state_as_tensor(self):
-        return torch.from_numpy(self.state.flatten()).float()
+        return torch.from_numpy(self.state.flatten()).double()
+
+    def number_of_empty_cells(self) -> int:
+        return np.where(self.state==0)[0].shape[0]
 
 
 
