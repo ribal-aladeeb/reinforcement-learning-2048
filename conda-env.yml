@@ -1,0 +1,8 @@
+dependencies:
+- cudatoolkit=10.2
+- libuv
+- ninja
+- pytorch
+- torchaudio
+- torchvision
+- typing_extensions

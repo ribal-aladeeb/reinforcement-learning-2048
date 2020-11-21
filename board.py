@@ -2,7 +2,7 @@ from __future__ import annotations  # in order to allow type hints for a class r
 import numpy as np
 from typing import List, Dict
 import random
-
+import torch
 
 class Board2048:
 
@@ -18,15 +18,14 @@ class Board2048:
             self._populate_empty_cell()
             self._populate_empty_cell()
 
-        self._board_state_history = [self.state.copy()]
-        print(self._board_state_history)
+        # self._board_state_history = [self.state.copy()]
 
     def clone(self) -> Board2048:
         board = Board2048(k=self.k, populate_empty_cells=self.populate_empty_cells)
         board.state: np.array = np.copy(self.state)
         board._mergescore: int = self._mergescore
         board._action_history: List[str] = self._action_history.copy()
-        board._board_state_history: List[np.array] = [state.copy() for state in self._board_state_history]
+        # board._board_state_history: List[np.array] = [state.copy() for state in self._board_state_history]
         return board
 
     def __repr__(self):
@@ -107,7 +106,7 @@ class Board2048:
         if not np.equal(result_matrix, board.state).all():
             board.state = result_matrix
             board._populate_empty_cell()
-        board._board_state_history.append(board.state)
+        # board._board_state_history.append(board.state)
         return board
 
     def down(self) -> Board2048:
@@ -118,7 +117,7 @@ class Board2048:
         if not np.equal(result_matrix, board.state).all():
             board.state = result_matrix
             board._populate_empty_cell()
-        board._board_state_history.append(board.state)
+        # board._board_state_history.append(board.state)
         return board
 
     def left(self) -> Board2048:
@@ -128,7 +127,7 @@ class Board2048:
         if not np.equal(result_matrix, board.state).all():
             board.state = result_matrix
             board._populate_empty_cell()
-        board._board_state_history.append(board.state)
+        # board._board_state_history.append(board.state)
         return board
 
     def right(self) -> Board2048:
@@ -139,13 +138,18 @@ class Board2048:
         if not np.equal(result_matrix, board.state).all():
             board.state = result_matrix
             board._populate_empty_cell()
-        board._board_state_history.append(board.state)
+        # board._board_state_history.append(board.state)
         return board
 
     def peek_action(self, action: str) -> Board2048:
         '''
         Returns the would-be state of the board if you were to save the state after performing the <action> argument
         '''
+        if type(action) is not str:
+            action = int(action)
+            actions_ints = ['u', 'd', 'l', 'r']
+            action = actions_ints[action]
+
         action = action.lower()[0]
         actions = {"u": "up", "d": "down", "l": "left", "r": "right"}
 
@@ -153,6 +157,7 @@ class Board2048:
             move_to_perform = getattr(self, actions[action])
             new_board: Board2048 = move_to_perform()
             return new_board
+
         raise ValueError(f"Action: {action} is invalid.")
 
     def simple_score(self):
@@ -168,6 +173,10 @@ class Board2048:
             print(self.__repr__().replace("0", "_"))
         else:
             print(self)
+
+    def flattened_state_as_tensor(self):
+        return torch.from_numpy(self.state.flatten()).float()
+
 
 
 def basic_updown_algorithm(k=4):
@@ -190,8 +199,11 @@ def basic_updown_algorithm(k=4):
     return board
 
 
+
 if __name__ == "__main__":
     board = Board2048()
+    basic_updown_algorithm()
+    exit()
     #board.show(ignore_zeros=True)
     while x:=input("What is your next move: "):
         board = board.peek_action(x)
@@ -199,5 +211,5 @@ if __name__ == "__main__":
     print(f"Final Score: {board.merge_score()}")
     board._action_history.append(None)
 
-    [print(state) for state in zip(board._board_state_history, board._action_history)]
+    # [print(state) for state in zip(board._board_state_history, board._action_history)]
 
