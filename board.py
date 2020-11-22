@@ -184,8 +184,8 @@ class Board2048:
     def flattened_state_as_tensor(self):
         return torch.from_numpy(self.state.flatten()).double()
 
-    def state_as_3d_tensor(self):
-        return torch.from_numpy(self.state[..., np.newaxis]).double()
+    def state_as_4d_tensor(self):
+        return torch.from_numpy(self.state[np.newaxis][np.newaxis]).double()
 
     def number_of_empty_cells(self) -> int:
         return np.where(self.state==0)[0].shape[0]
@@ -194,7 +194,7 @@ class Board2048:
 
 def basic_updown_algorithm(k=4):
     board = Board2048()
-    print(board.state_as_3d_tensor())
+    print(board.state_as_4d_tensor())
     exit()
     board = Board2048(k=k)
     simple_score = board.simple_score()
