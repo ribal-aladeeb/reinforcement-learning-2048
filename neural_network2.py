@@ -18,8 +18,8 @@ else:
     device = "cuda:0"
 
 batch_size = 32  # number of experiences to sample
+discount_factor = 0.95 # used in q-learning equation (Bellman equation)
 
-# discount_factor = 0.95 # used in q-learning equation (Bellman equation)
 # model = nn.Sequential(
 #     nn.Linear(16, 256), # takes 16 inputs
 #     nn.ReLU(),
@@ -59,7 +59,7 @@ def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
     if np.random.rand() < epsilon:
         return np.random.randint(4)
     else:
-        Q_values = model(board.state_as_4d_tensor())
+        Q_values = model(board.state_as_4d_tensor().to(device))
         next_action: torch.Tensor = torch.argmax(Q_values)
         return int(next_action)
 
@@ -72,28 +72,22 @@ def sample_experiences(batch_size):
     rewards = []
     next_states = []
     dones = []
+
+    states = torch.tensor([], device=device).double()
+    next_states = torch.tensor([], device=device).double()
+
     for experience in batch:
         board, action, reward, next_board, done = experience
-        states.append(board.state_as_4d_tensor().to(device))
+        state = board.state_as_4d_tensor().to(device)
+        next_state = next_board.state_as_4d_tensor().to(device)
         actions.append(action)
         rewards.append(reward)
-        next_states.append(next_board.state_as_4d_tensor().to(device))
         dones.append(int(done))
+        states = torch.cat((states, state), dim=0)
+        next_states = torch.cat((next_states, next_state), dim=0)
 
-    states_tensor = torch.Tensor([[[[]]]], device=device).double()
-    # action_tensor = torch.Tensor([], dtype=torch.double, device=device)
-    # rewards_tensor = torch.Tensor([], dtype=torch.double, device=device)
-    next_states_tensor = torch.Tensor([[[[]]]], device=device).double()
-    # dones_tensor = torch.Tensor([], dtype=torch.double, device=device)
-
-    for i in range(len(states)):
-        states_tensor = torch.cat((states_tensor, states[i]), dim=0)
-        next_states_tensor = torch.cat((next_states_tensor, next_states[i]), dim=0)
-
-    # states = torch.tensor(states, device=device)
     actions = torch.tensor(actions, device=device)
     rewards = torch.tensor(rewards, device=device)
-    # next_states = torch.tensor(next_states, device=device)
     dones = torch.tensor(dones, device=device)
     return states, actions, rewards, next_states, dones
 
