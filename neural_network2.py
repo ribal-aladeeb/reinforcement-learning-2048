@@ -1,7 +1,10 @@
+'''
+This will become a convolutional network
+'''
+
 from collections import deque
-
-
 from torch._C import dtype
+from torch.nn.modules import padding
 from board import Board2048
 import torch
 import torch.nn as nn
@@ -15,16 +18,35 @@ else:
     device = "cuda:0"
 
 batch_size = 32  # number of experiences to sample
-discount_factor = 0.95 # used in qlearning equation (Bellman equation)
+discount_factor = 0.95 # used in q-learning equation (Bellman equation)
 model = nn.Sequential(
-    nn.Linear(16, 16), # takes 16 inputs
+    nn.Linear(16, 256), # takes 16 inputs
+    nn.ReLU(),
+    nn.Linear(256, 32),
+    nn.ReLU(),
+    nn.Linear(32, 16),
     nn.ReLU(),
     nn.Linear(16, 4), # outputs 4 actions
 ).double()
+
+# model = nn.Sequential(
+#     nn.Conv2d(1, 1, kernel_size=3, stride=1),
+#     nn.ReLU(),
+#     nn.Conv2d(4, 16, kernel_size=3, stride=1),
+#     nn.ReLU(),
+#     nn.Conv2d(16, 64, kernel_size=3, stride=1),
+#     nn.ReLU(),
+#     nn.Conv2d(64, 256, kernel_size=3, stride=1),
+#     nn.ReLU(),
+#     nn.Flatten(),
+#     nn.Linear(256, 4)
+# )
+
 model.to(device)
 
+target_model = copy.deepcopy(model)
 replay_buffer = deque(maxlen=3000) # [(state, action, reward, next_state, done),...]
-learning_rate = 1e-4  # optimizer for gradient descent
+learning_rate = 1e-5  # optimizer for gradient descent
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 print(model)
@@ -77,6 +99,9 @@ def compute_reward(board, next_board):
         reward += np.log2(next_max)*0.1
     return reward
 
+def compute_priority(board, reward, next_board):
+    pass
+
 def play_one_step(board, epsilon):
     action = epsilon_greedy_policy(board, epsilon)
 
@@ -88,6 +113,8 @@ def play_one_step(board, epsilon):
     done = (len(next_board.available_moves()) == 0)  # indicates whether you have any moves you can do
     if done:
         next_board.show(ignore_zeros=True)
+
+    priority = compute_priority(board, reward, next_board)
     replay_buffer.append((board, action, reward, next_board, done))
     return next_board, reward, done
 
@@ -106,7 +133,7 @@ def train_step(batch_size):  # 636
     states, actions, rewards, next_states, dones = experiences
 
     # compute Q-value Equation: Q_target(s,a) = r + discount_factor * max Q_theta(s', a')
-    next_Q_theta_values = model(next_states)  # compute Q_theta(s',a')
+    next_Q_theta_values = target_model(next_states)  # compute Q_theta(s',a')
     max_next_Q_theta_value = torch.max(next_Q_theta_values, axis=1).values  # compute max
 
     # apply discount factor to Q_theta and sum up with rewards. Note: (1-dones) is used to cancel out Q_theta when the environment is done
@@ -131,35 +158,23 @@ def train_step(batch_size):  # 636
 
 
 def main():
-    no_episodes = 500
-    no_episodes_before_training = 50
+    no_episodes = 1000
+    no_episodes_to_reach_epsilon = 500
+    no_episodes_before_training = 100
+    no_episodes_before_update = 30
 
     for ep in range(no_episodes):
         board = Board2048()
         done = False
         while not done:
-            epsilon = max((1 - ep) / no_episodes, 0.3)  #  value to determine how greedy the policy should be for that step
+            epsilon = max((no_episodes_to_reach_epsilon - ep) / no_episodes_to_reach_epsilon, 0.01) # value to determine how greedy the policy should be for that step
             board, reward, done = play_one_step(board, epsilon)
-            if done:
-                break
         print(f"Episode: {ep}: {board.merge_score()}, {np.max(board.state.flatten())}")
         if ep > no_episodes_before_training:
             train_step(batch_size)
+        if ep % no_episodes_before_update == 0:
+            target_model = copy.deepcopy(model)
 
 
-
-
-"""Notes:
-* => Merge score as a reward is ever increasing
-=> Values are not normalized: 2,4,8,16
-* => Hidden Layers, different types of layers etc
-DONE => Run it on GPU
-=> Identify Performance issues and tackle them
-=> Start collecting metrics
-*=> Implement Variants of DQN: fixed q-target, double DQN, prioritized experience replay, dueling DQN
-=> Unit Tests for one_hot and maybe other functionalities
-=> Gradients: No magic
-x => Decide whether the board can keep its underlying numpy state or if it needs to be reimplemented as tensors
-"""
 if __name__ == "__main__":
     main()
