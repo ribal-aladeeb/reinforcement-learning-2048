@@ -17,7 +17,7 @@ if not torch.cuda.is_available():
 else:
     device = "cuda:0"
 
-batch_size = 32  # number of experiences to sample
+batch_size = 100  # number of experiences to sample
 discount_factor = 0.95 # used in q-learning equation (Bellman equation)
 
 # model = nn.Sequential(
@@ -31,10 +31,10 @@ discount_factor = 0.95 # used in q-learning equation (Bellman equation)
 # ).double()
 
 model = nn.Sequential(
-    nn.Conv2d(1, 2, kernel_size=2),
+    nn.Conv2d(1, 2, kernel_size=2), # input takes shape torch.Size([1, 1, 4, 4])
     nn.ReLU(),
-
-    # nn.Conv2d(2, 4, kernel_size=2),
+    # nn.MaxPool2d(kernel_size=1),
+    # nn.Conv2d(2, 3, kernel_size=1),
     # nn.ReLU(),
     # nn.Conv2d(16, 64, kernel_size=2),
     # nn.ReLU(),
@@ -48,18 +48,18 @@ model = nn.Sequential(
 model.to(device)
 
 target_model = copy.deepcopy(model)
-replay_buffer = deque(maxlen=3000)  # [(state, action, reward, next_state, done),...]
+replay_buffer = deque(maxlen=5000)  # [(state, action, reward, next_state, done),...]
 learning_rate = 1e-5  # optimizer for gradient descent
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
-print(model)
 
 
 def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
     if np.random.rand() < epsilon:
         return np.random.randint(4)
     else:
-        Q_values = model(board.state_as_4d_tensor().to(device))
+        state = board.state_as_4d_tensor().to(device)
+        Q_values = model(state)
         next_action: torch.Tensor = torch.argmax(Q_values)
         return int(next_action)
 
@@ -126,7 +126,7 @@ def play_one_step(board, epsilon):
 
     # priority = compute_priority(board, reward, next_board)
     replay_buffer.append((board, action, reward, next_board, done))
-    return next_board, reward, done
+    return next_board, action, reward, done
 
 
 def one_hot(tensor, no_outputs):
@@ -160,30 +160,36 @@ def train_step(batch_size):  # 636
 
     # compute loss
     loss = loss_fn(q_values, target_Q_values)
-
     # back propogate
     loss.backward()  # compute gradients
     optimizer.step()  # update weights
     optimizer.zero_grad()  # release gradients
-
+    return loss
 
 def main():
-    no_episodes = 1000
-    no_episodes_to_reach_epsilon = 500
-    no_episodes_before_training = 100
+    no_episodes = 10000
+    no_episodes_to_reach_epsilon = 1000
+    no_episodes_before_training = 200
     no_episodes_before_update = 30
 
     for ep in range(no_episodes):
         board = Board2048()
         done = False
+        board_history = []
         while not done:
             epsilon = max((no_episodes_to_reach_epsilon - ep) / no_episodes_to_reach_epsilon, 0.01)  # value to determine how greedy the policy should be for that step
-            board, reward, done = play_one_step(board, epsilon)
+            new_board, action, reward, done = play_one_step(board, epsilon)
+            board_history.append((board, ['u', 'd', 'l', 'r'][int(action)], reward))
+            board = new_board
+
+        # print(board._action_history)
         print(f"Episode: {ep}: {board.merge_score()}, {np.max(board.state.flatten())}")
         if ep > no_episodes_before_training:
-            train_step(batch_size)
+            loss = train_step(batch_size)
         if ep % no_episodes_before_update == 0:
+            print("Updating Model")
             target_model = copy.deepcopy(model)
+
 
 
 if __name__ == "__main__":

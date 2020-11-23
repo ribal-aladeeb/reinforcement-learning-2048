@@ -174,12 +174,11 @@ class Board2048:
         else:
             print(self)
 
-    def normalize(self):
+    def normalized(self):
         normalized = self.clone()
         maxvalue = np.max(normalized.state)
         normalized.state = normalized.state / maxvalue
         return normalized
-
 
     def flattened_state_as_tensor(self):
         return torch.from_numpy(self.state.flatten()).double()
@@ -193,9 +192,6 @@ class Board2048:
 
 
 def basic_updown_algorithm(k=4):
-    board = Board2048()
-    print(board.state_as_4d_tensor())
-    exit()
     board = Board2048(k=k)
     simple_score = board.simple_score()
     while True:
@@ -218,8 +214,7 @@ def basic_updown_algorithm(k=4):
 
 if __name__ == "__main__":
     board = Board2048()
-    basic_updown_algorithm()
-    exit()
+
     #board.show(ignore_zeros=True)
     while x:=input("What is your next move: "):
         board = board.peek_action(x)
