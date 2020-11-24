@@ -18,31 +18,29 @@ else:
     device = "cuda:0"
 
 batch_size = 100  # number of experiences to sample
-discount_factor = 0.95 # used in q-learning equation (Bellman equation)
+discount_factor = 0.95  # used in q-learning equation (Bellman equation)
 
-# model = nn.Sequential(
-#     nn.Linear(16, 256), # takes 16 inputs
-#     nn.ReLU(),
-#     nn.Linear(256, 32),
-#     nn.ReLU(),
-#     nn.Linear(32, 16),
-#     nn.ReLU(),
-#     nn.Linear(16, 4), # outputs 4 actions
-# ).double()
+'''
+When using ConvNets, the following formula is useful for knowing a convolution's feature map output shape
+
+SHAPE = ((w + 2p) - k + s)/s
+where
+w: width of input feature (assuming width == height)
+p: padding value (a padding of 1 means adds 2 pixels to each axis)
+k: kernel size (assuming kernel is square)
+s: stride
+
+the resulting output feature map (assuming they are all squares) will be SHAPE x SHAPE
+'''
 
 model = nn.Sequential(
-    nn.Conv2d(1, 2, kernel_size=2), # input takes shape torch.Size([1, 1, 4, 4])
+    nn.Conv2d(1, 128, kernel_size=2),
     nn.ReLU(),
-    # nn.MaxPool2d(kernel_size=1),
-    # nn.Conv2d(2, 3, kernel_size=1),
-    # nn.ReLU(),
-    # nn.Conv2d(16, 64, kernel_size=2),
-    # nn.ReLU(),
-    # nn.Conv2d(64, 256, kernel_size=2),
-    # nn.ReLU(),
-
-    nn.Flatten(),
-    nn.Linear(18, 4)
+    nn.Conv2d(128, 128, kernel_size=2),
+    nn.ReLU(),
+    nn.Flatten(),  # each feature map is 2x2 with 128 features
+    nn.Linear(2*2*128, 64),
+    nn.Linear(64, 4)
 ).double()
 
 model.to(device)
@@ -166,6 +164,7 @@ def train_step(batch_size):  # 636
     optimizer.zero_grad()  # release gradients
     return loss
 
+
 def main():
     no_episodes = 10000
     no_episodes_to_reach_epsilon = 1000
@@ -189,7 +188,6 @@ def main():
         if ep % no_episodes_before_update == 0:
             print("Updating Model")
             target_model = copy.deepcopy(model)
-
 
 
 if __name__ == "__main__":
