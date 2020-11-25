@@ -41,21 +41,24 @@ model = nn.Sequential(
     nn.Linear(64, 4)
 ).double().to(device=device)
 
-batch_size = 2000  # number of experiences to sample
+batch_size = 5000  # number of experiences to sample
 discount_factor = 0.95  # used in q-learning equation (Bellman equation)
 target_model = copy.deepcopy(model)
-replay_buffer = deque(maxlen=5000)  # [(state, action, reward, next_state, done),...]
-learning_rate = 1e-5  # optimizer for gradient descent
+replay_buffer = deque(maxlen=15000)  # [(state, action, reward, next_state, done),...]
+learning_rate = 1e-4  # optimizer for gradient descent
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
 no_episodes = 50000
-no_episodes_to_reach_epsilon = 1000
-no_episodes_before_training = 50
-no_episodes_before_updating_target = 30
+no_episodes_to_reach_epsilon = 10000
 min_epsilon = 0.01
+no_episodes_before_training = 2000
+no_episodes_before_updating_target = 100
 use_double_dqn = True
-
-experiment = Experiment()
+job_name = input("What is the job name: ")
+if job_name:
+    experiment = Experiment(folder_name)
+else:
+    experiment = Experiment()
 experiment.add_hyperparameter({
     'batch_size': batch_size,
     'discount_factor' :discount_factor,
