@@ -3,8 +3,6 @@ This will become a convolutional network
 '''
 
 from collections import deque
-from torch._C import dtype
-from torch.nn.modules import padding
 from board import Board2048
 import torch
 import torch.nn as nn
@@ -16,9 +14,9 @@ if not torch.cuda.is_available():
     device = "cpu"
 else:
     device = "cuda:0"
+#exit()
 
-batch_size = 100  # number of experiences to sample
-discount_factor = 0.95  # used in q-learning equation (Bellman equation)
+
 
 '''
 When using ConvNets, the following formula is useful for knowing a convolution's feature map output shape
@@ -33,23 +31,27 @@ s: stride
 the resulting output feature map (assuming they are all squares) will be SHAPE x SHAPE
 '''
 
+
 model = nn.Sequential(
-    nn.Conv2d(1, 128, kernel_size=2),
+    nn.Conv2d(1, 64, kernel_size=2),
     nn.ReLU(),
-    nn.Conv2d(128, 128, kernel_size=2),
+    nn.Conv2d(64, 64, kernel_size=2),
     nn.ReLU(),
     nn.Flatten(),  # each feature map is 2x2 with 128 features
-    nn.Linear(2*2*128, 64),
+    nn.Linear(2*2*64, 64),
     nn.Linear(64, 4)
 ).double()
 
 model.to(device)
 
+batch_size = 2000  # number of experiences to sample
+discount_factor = 0.95  # used in q-learning equation (Bellman equation)
 target_model = copy.deepcopy(model)
 replay_buffer = deque(maxlen=5000)  # [(state, action, reward, next_state, done),...]
 learning_rate = 1e-5  # optimizer for gradient descent
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+
 
 
 def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
@@ -58,7 +60,9 @@ def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
     else:
         state = board.state_as_4d_tensor().to(device)
         Q_values = model(state)
-        next_action: torch.Tensor = torch.argmax(Q_values)
+
+        moves = board.available_moves_as_torch_unit_vector(device=device)
+        next_action: torch.Tensor = torch.argmax(moves * Q_values)
         return int(next_action)
 
 
@@ -90,7 +94,7 @@ def sample_experiences(batch_size):
     return states, actions, rewards, next_states, dones
 
 
-def compute_reward(board, next_board):
+def compute_reward(board, next_board, action, done):
     '''
     Here a reward is defined as the number of merges. If the max value of the
     board has increase, add np.log2(next_max) * 0.1 to the reward.
@@ -103,11 +107,10 @@ def compute_reward(board, next_board):
     reward = number_of_merges
     if next_max > previous_max:
         reward += np.log2(next_max)*0.1
+    # if board == next_board:
+    #     reward = -10
     return reward
 
-
-def compute_priority(board, reward, next_board):
-    pass
 
 
 def play_one_step(board, epsilon):
@@ -116,11 +119,11 @@ def play_one_step(board, epsilon):
     # take the board and perform action
     next_board = board.peek_action(action)
 
-    reward = compute_reward(board, next_board)
     # reward = next_board.merge_score()  # define a better reward than merge
     done = (len(next_board.available_moves()) == 0)  # indicates whether you have any moves you can do
-    if done:
-        next_board.show(ignore_zeros=True)
+    # if done:
+    #     next_board.show(ignore_zeros=True)
+    reward = compute_reward(board, next_board, action, done)
 
     # priority = compute_priority(board, reward, next_board)
     replay_buffer.append((board, action, reward, next_board, done))
@@ -140,13 +143,23 @@ def train_step(batch_size):  # 636
     experiences = sample_experiences(batch_size)  # (state, action, reward, next_state, done)
     states, actions, rewards, next_states, dones = experiences
 
-    # compute Q-value Equation: Q_target(s,a) = r + discount_factor * max Q_theta(s', a')
-    next_Q_theta_values = target_model(next_states)  # compute Q_theta(s',a')
-    max_next_Q_theta_value = torch.max(next_Q_theta_values, axis=1).values  # compute max
 
-    # apply discount factor to Q_theta and sum up with rewards. Note: (1-dones) is used to cancel out Q_theta when the environment is done
-    target_Q_values = rewards + (1 - dones) * discount_factor * max_next_Q_theta_value
-    target_Q_values.double()
+    use_double_dqn = True
+    if use_double_dqn:
+        next_Q_theta_values = model(next_states)
+        best_next_actions = torch.argmax(next_Q_theta_values, axis=1)
+        next_mask = one_hot(best_next_actions, 4)
+        next_best_q_values = torch.sum((target_model(next_states) * next_mask), axis=1)
+        target_Q_values = (rewards + (1-dones) * discount_factor * next_best_q_values).double()
+    else:
+        # compute Q-value Equation: Q_target(s,a) = r + discount_factor * max Q_theta(s', a')
+        next_Q_theta_values = target_model(next_states)  # compute Q_theta(s',a')
+
+        max_next_Q_theta_value = torch.max(next_Q_theta_values, axis=1).values  # compute max
+
+        # apply discount factor to Q_theta and sum up with rewards. Note: (1-dones) is used to cancel out Q_theta when the environment is done
+        target_Q_values = rewards + ((1 - dones) * discount_factor * max_next_Q_theta_value)
+        target_Q_values.double()
 
     # create a mask
     mask = one_hot(actions, 4)  # mask will be used to zero out the q values predictions from the model
@@ -158,37 +171,52 @@ def train_step(batch_size):  # 636
 
     # compute loss
     loss = loss_fn(q_values, target_Q_values)
+
     # back propogate
     loss.backward()  # compute gradients
-    optimizer.step()  # update weights
     optimizer.zero_grad()  # release gradients
+    optimizer.step()  # update weights
     return loss
 
 
 def main():
-    no_episodes = 10000
+    no_episodes = 50000
     no_episodes_to_reach_epsilon = 1000
-    no_episodes_before_training = 200
+    no_episodes_before_training = 50
     no_episodes_before_update = 30
+    min_epsilon = 0.01
+    global target_model
 
     for ep in range(no_episodes):
         board = Board2048()
         done = False
         board_history = []
         while not done:
-            epsilon = max((no_episodes_to_reach_epsilon - ep) / no_episodes_to_reach_epsilon, 0.01)  # value to determine how greedy the policy should be for that step
+            epsilon = max((no_episodes_to_reach_epsilon - ep) / no_episodes_to_reach_epsilon, min_epsilon)  # value to determine how greedy the policy should be for that step
             new_board, action, reward, done = play_one_step(board, epsilon)
             board_history.append((board, ['u', 'd', 'l', 'r'][int(action)], reward))
             board = new_board
-
-        # print(board._action_history)
-        print(f"Episode: {ep}: {board.merge_score()}, {np.max(board.state.flatten())}")
+        if ep % 50 == 0:
+            print(f"Episode: {ep}: {board.merge_score()}, {np.max(board.state.flatten())}, {len(board._action_history)}")
         if ep > no_episodes_before_training:
-            loss = train_step(batch_size)
+            train_step(batch_size)
         if ep % no_episodes_before_update == 0:
             print("Updating Model")
             target_model = copy.deepcopy(model)
 
 
+
 if __name__ == "__main__":
     main()
+
+
+'''
+episodes = 100
+
+exp.hyperparams.add(episodes):
+
+name = get_attri(obj, key)
+value = param
+
+params[name]=value
+'''

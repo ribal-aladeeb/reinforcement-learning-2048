@@ -2,8 +2,8 @@ from __future__ import annotations  # in order to allow type hints for a class r
 import numpy as np
 from typing import List, Dict
 import random
+import numpy
 import torch
-
 class Board2048:
 
     def __init__(self, k: int = 4, populate_empty_cells=True):
@@ -88,15 +88,23 @@ class Board2048:
 
         return vector
 
+    def available_moves_as_torch_unit_vector(self, device=None):
+        moves = ['up', 'down', 'left', 'right']
+        unit_vector = torch.zeros(4, device=device)
+        for i, move in enumerate(moves):
+            board = self.peek_action(move)
+            if not (self.state == board.state).all():
+                unit_vector[i] = 1
+        return unit_vector
+
+
     def available_moves(self) -> Dict[str, Board2048]:
         moves = ['up', 'down', 'left', 'right']
         mapping = dict()
-
-        for move in moves:
+        for i, move in enumerate(moves):
             board = self.peek_action(move)
             if not (self.state == board.state).all():
                 mapping[move] = board
-
         return mapping
 
     def up(self) -> Board2048:
