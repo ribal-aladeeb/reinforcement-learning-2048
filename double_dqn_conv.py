@@ -2,6 +2,8 @@
 This will become a convolutional network
 '''
 from collections import deque
+import pprint
+from torch import tensor
 from board import Board2048
 import torch
 import torch.nn as nn
@@ -14,9 +16,8 @@ if not torch.cuda.is_available():
     device = "cpu"
 else:
     device = "cuda:0"
-#exit()
 
-
+pp = pprint.PrettyPrinter(indent=4)
 
 '''
 When using ConvNets, the following formula is useful for knowing a convolution's feature map output shape
@@ -30,8 +31,6 @@ s: stride
 
 the resulting output feature map (assuming they are all squares) will be SHAPE x SHAPE
 '''
-
-
 model = nn.Sequential(
     nn.Conv2d(1, 64, kernel_size=2),
     nn.ReLU(),
@@ -54,22 +53,25 @@ no_episodes_to_reach_epsilon = 1000
 no_episodes_before_training = 50
 no_episodes_before_updating_target = 30
 min_epsilon = 0.01
+use_double_dqn = True
 
 experiment = Experiment()
 experiment.add_hyperparameter({
     'batch_size': batch_size,
     'discount_factor' :discount_factor,
-    'model_arch': model,
+    'model': str(model),
     'replay_buffer': replay_buffer,
     'learning_rate' : learning_rate,
-    'loss_fn': loss_fn,
-    'optimizer': optimizer,
+    'loss_fn': str(loss_fn),
+    'optimizer': str(optimizer),
     'no_episodes': no_episodes,
     'no_episodes_to_reach_epsilon': no_episodes_to_reach_epsilon,
     'no_episodes_before_training': no_episodes_before_training,
     'no_episodes_before_updating_target': no_episodes_before_updating_target,
     'min_epsilon': min_epsilon,
+    'use_double_dqn': use_double_dqn
 })
+pp.pprint(experiment.hyperparameters)
 
 def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
     available_moves = board.available_moves_as_torch_unit_vector(device=device)
@@ -82,6 +84,8 @@ def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
         Q_values = model(state)
 
         available_Q_values = available_moves * Q_values
+        # V = torch.max(Q_values) # best q_value
+
         next_action: torch.Tensor = torch.argmax(available_Q_values)
         return int(next_action), int(done)
 
@@ -135,8 +139,6 @@ def play_one_step(board, epsilon):
     # take the board and perform action
     next_board = board.peek_action(action)
 
-    # if done:
-    #     next_board.show(ignore_zeros=True)
     reward = compute_reward(board, next_board, action, done)
 
     # priority = compute_priority(board, reward, next_board)
@@ -157,8 +159,6 @@ def train_step(batch_size):  # 636
     experiences = sample_experiences(batch_size)  # (state, action, reward, next_state, done)
     states, actions, rewards, next_states, dones = experiences
 
-
-    use_double_dqn = True
     if use_double_dqn:
         next_Q_theta_values = model(next_states)
         best_next_actions = torch.argmax(next_Q_theta_values, axis=1)
