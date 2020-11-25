@@ -2,6 +2,7 @@
 This will become a convolutional network
 '''
 from collections import deque
+from copy import Error
 import pprint
 from torch import tensor
 from board import Board2048
@@ -55,15 +56,16 @@ no_episodes_before_training = 2000
 no_episodes_before_updating_target = 100
 use_double_dqn = True
 job_name = input("What is the job name: ")
+
 if job_name:
-    experiment = Experiment(job_name)
+    experiment = Experiment(folder_name=job_name)
 else:
     experiment = Experiment()
 experiment.add_hyperparameter({
     'batch_size': batch_size,
     'discount_factor' :discount_factor,
     'model': str(model),
-    'replay_buffer': replay_buffer,
+    'replay_buffer': replay_buffer.maxlen,
     'learning_rate' : learning_rate,
     'loss_fn': str(loss_fn),
     'optimizer': str(optimizer),
@@ -216,9 +218,12 @@ def main():
             if ep % no_episodes_before_updating_target == 0:
                 print("Updating Model")
                 target_model.load_state_dict(copy.deepcopy(model.state_dict()))
+            if ep >= 100:
+                assert False, 'Please go check that experiment is saved correctly.'
 
         experiment.save()
-    except KeyboardInterrupt or Exception as e:
+
+    except:
         try:
             print(f'Keyboard interupt caught, saving current experiment in {experiment.folder}')
             experiment.save()
