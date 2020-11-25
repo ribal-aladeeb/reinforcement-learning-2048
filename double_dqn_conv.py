@@ -43,7 +43,7 @@ model = nn.Sequential(
 ).double().to(device=device)
 
 batch_size = 5000  # number of experiences to sample
-discount_factor = 0.95  # used in q-learning equation (Bellman equation)
+discount_factor = 0.80  # used in q-learning equation (Bellman equation)
 target_model = copy.deepcopy(model)
 replay_buffer = deque(maxlen=15000)  # [(state, action, reward, next_state, done),...]
 learning_rate = 1e-4  # optimizer for gradient descent
@@ -55,6 +55,7 @@ min_epsilon = 0.01
 no_episodes_before_training = 2000
 no_episodes_before_updating_target = 100
 use_double_dqn = True
+
 job_name = input("What is the job name: ")
 
 if job_name:
@@ -218,8 +219,6 @@ def main():
             if ep % no_episodes_before_updating_target == 0:
                 print("Updating Model")
                 target_model.load_state_dict(copy.deepcopy(model.state_dict()))
-            if ep >= 100:
-                assert False, 'Please go check that experiment is saved correctly.'
 
         experiment.save()
 
