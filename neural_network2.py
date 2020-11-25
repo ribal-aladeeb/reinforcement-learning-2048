@@ -1,7 +1,6 @@
 '''
 This will become a convolutional network
 '''
-
 from collections import deque
 from board import Board2048
 import torch
@@ -9,6 +8,7 @@ import torch.nn as nn
 import numpy as np
 import logging
 import copy
+from experiments import Experiment
 if not torch.cuda.is_available():
     logging.warning("No GPU: Cuda is not utilized")
     device = "cpu"
@@ -40,9 +40,7 @@ model = nn.Sequential(
     nn.Flatten(),  # each feature map is 2x2 with 128 features
     nn.Linear(2*2*64, 64),
     nn.Linear(64, 4)
-).double()
-
-model.to(device)
+).double().to(device=device)
 
 batch_size = 2000  # number of experiences to sample
 discount_factor = 0.95  # used in q-learning equation (Bellman equation)
@@ -51,19 +49,41 @@ replay_buffer = deque(maxlen=5000)  # [(state, action, reward, next_state, done)
 learning_rate = 1e-5  # optimizer for gradient descent
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+no_episodes = 50000
+no_episodes_to_reach_epsilon = 1000
+no_episodes_before_training = 50
+no_episodes_before_updating_target = 30
+min_epsilon = 0.01
 
-
+experiment = Experiment()
+experiment.add_hyperparameter({
+    'batch_size': batch_size,
+    'discount_factor' :discount_factor,
+    'model_arch': model,
+    'replay_buffer': replay_buffer,
+    'learning_rate' : learning_rate,
+    'loss_fn': loss_fn,
+    'optimizer': optimizer,
+    'no_episodes': no_episodes,
+    'no_episodes_to_reach_epsilon': no_episodes_to_reach_epsilon,
+    'no_episodes_before_training': no_episodes_before_training,
+    'no_episodes_before_updating_target': no_episodes_before_updating_target,
+    'min_epsilon': min_epsilon,
+})
 
 def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
+    available_moves = board.available_moves_as_torch_unit_vector(device=device)
+    done = torch.max(available_moves) == 0
+
     if np.random.rand() < epsilon:
-        return np.random.randint(4)
+        return np.random.randint(4), done
     else:
         state = board.state_as_4d_tensor().to(device)
         Q_values = model(state)
 
-        moves = board.available_moves_as_torch_unit_vector(device=device)
-        next_action: torch.Tensor = torch.argmax(moves * Q_values)
-        return int(next_action)
+        available_Q_values = available_moves * Q_values
+        next_action: torch.Tensor = torch.argmax(available_Q_values)
+        return int(next_action), int(done)
 
 
 def sample_experiences(batch_size):
@@ -107,20 +127,14 @@ def compute_reward(board, next_board, action, done):
     reward = number_of_merges
     if next_max > previous_max:
         reward += np.log2(next_max)*0.1
-    # if board == next_board:
-    #     reward = -10
     return reward
 
-
-
 def play_one_step(board, epsilon):
-    action = epsilon_greedy_policy(board, epsilon)
+    action, done = epsilon_greedy_policy(board, epsilon)
 
     # take the board and perform action
     next_board = board.peek_action(action)
 
-    # reward = next_board.merge_score()  # define a better reward than merge
-    done = (len(next_board.available_moves()) == 0)  # indicates whether you have any moves you can do
     # if done:
     #     next_board.show(ignore_zeros=True)
     reward = compute_reward(board, next_board, action, done)
@@ -180,43 +194,35 @@ def train_step(batch_size):  # 636
 
 
 def main():
-    no_episodes = 50000
-    no_episodes_to_reach_epsilon = 1000
-    no_episodes_before_training = 50
-    no_episodes_before_update = 30
-    min_epsilon = 0.01
-    global target_model
+    try:
 
-    for ep in range(no_episodes):
-        board = Board2048()
-        done = False
-        board_history = []
-        while not done:
-            epsilon = max((no_episodes_to_reach_epsilon - ep) / no_episodes_to_reach_epsilon, min_epsilon)  # value to determine how greedy the policy should be for that step
-            new_board, action, reward, done = play_one_step(board, epsilon)
-            board_history.append((board, ['u', 'd', 'l', 'r'][int(action)], reward))
-            board = new_board
-        if ep % 50 == 0:
-            print(f"Episode: {ep}: {board.merge_score()}, {np.max(board.state.flatten())}, {len(board._action_history)}")
-        if ep > no_episodes_before_training:
-            train_step(batch_size)
-        if ep % no_episodes_before_update == 0:
-            print("Updating Model")
-            target_model = copy.deepcopy(model)
+        for ep in range(no_episodes):
+            board = Board2048()
+            done = False
+            board_history = []
+            while not done:
+                epsilon = max((no_episodes_to_reach_epsilon - ep) / no_episodes_to_reach_epsilon, min_epsilon)  # value to determine how greedy the policy should be for that step
+                new_board, action, reward, done = play_one_step(board, epsilon)
+                board_history.append((board, ['u', 'd', 'l', 'r'][int(action)], reward))
+                board = new_board
+            experiment.add_episode(board, epsilon, ep, reward)
+            if ep % 50 == 0:
+                print(f"Episode: {ep}: {board.merge_score()}, {np.max(board.state.flatten())}, {len(board._action_history)}")
+            if ep > no_episodes_before_training:
+                train_step(batch_size)
+            if ep % no_episodes_before_updating_target == 0:
+                print("Updating Model")
+                target_model.load_state_dict(copy.deepcopy(model.state_dict()))
 
+        experiment.save()
+    except KeyboardInterrupt or Exception as e:
+        try:
+            print(f'Keyboard interupt caught, saving current experiment in {experiment.folder}')
+            experiment.save()
+        except Exception as e:
+            print(e)
+            print("Error while saving your experiment to disk.")
 
 
 if __name__ == "__main__":
     main()
-
-
-'''
-episodes = 100
-
-exp.hyperparams.add(episodes):
-
-name = get_attri(obj, key)
-value = param
-
-params[name]=value
-'''
