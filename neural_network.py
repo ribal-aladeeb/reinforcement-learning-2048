@@ -1,13 +1,14 @@
 from collections import deque
 
 
-from torch._C import dtype
 from board import Board2048
+from experiments import Experiment
 import torch
 import torch.nn as nn
 import numpy as np
 import logging
-import copy
+
+
 if not torch.cuda.is_available():
     logging.warning("No GPU: Cuda is not utilized")
     device = "cpu"
@@ -15,15 +16,15 @@ else:
     device = "cuda:0"
 
 batch_size = 32  # number of experiences to sample
-discount_factor = 0.95 # used in qlearning equation (Bellman equation)
+discount_factor = 0.95  # used in qlearning equation (Bellman equation)
 model = nn.Sequential(
-    nn.Linear(16, 16), # takes 16 inputs
+    nn.Linear(16, 16),  # takes 16 inputs
     nn.ReLU(),
-    nn.Linear(16, 4), # outputs 4 actions
+    nn.Linear(16, 4),  # outputs 4 actions
 ).double()
 model.to(device)
 
-replay_buffer = deque(maxlen=3000) # [(state, action, reward, next_state, done),...]
+replay_buffer = deque(maxlen=3000)  # [(state, action, reward, next_state, done),...]
 learning_rate = 1e-4  # optimizer for gradient descent
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
@@ -41,7 +42,7 @@ def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
 
 def sample_experiences(batch_size):
     random_sample = np.random.randint(len(replay_buffer), size=batch_size)
-    batch = [replay_buffer[index] for index in random_sample] # list of sampled experiences
+    batch = [replay_buffer[index] for index in random_sample]  # list of sampled experiences
     states = []
     actions = []
     rewards = []
@@ -62,6 +63,7 @@ def sample_experiences(batch_size):
     dones = torch.tensor(dones, device=device)
     return states, actions, rewards, next_states, dones
 
+
 def compute_reward(board, next_board):
     '''
     Here a reward is refine as the number of merges. If the max value of the
@@ -77,6 +79,7 @@ def compute_reward(board, next_board):
         reward += np.log2(next_max)*0.1
     return reward
 
+
 def play_one_step(board, epsilon):
     action = epsilon_greedy_policy(board, epsilon)
 
@@ -84,7 +87,7 @@ def play_one_step(board, epsilon):
     next_board = board.peek_action(action)
 
     reward = compute_reward(board, next_board)
-    #reward = next_board.merge_score()  # define a better reward than merge
+    # reward = next_board.merge_score()  # define a better reward than merge
     done = (len(next_board.available_moves()) == 0)  # indicates whether you have any moves you can do
     if done:
         next_board.show(ignore_zeros=True)
@@ -102,7 +105,7 @@ def one_hot(tensor, no_outputs):
 
 def train_step(batch_size):  # 636
     # sample some experiences
-    experiences = sample_experiences(batch_size) # (state, action, reward, next_state, done)
+    experiences = sample_experiences(batch_size)  # (state, action, reward, next_state, done)
     states, actions, rewards, next_states, dones = experiences
 
     # compute Q-value Equation: Q_target(s,a) = r + discount_factor * max Q_theta(s', a')
@@ -114,9 +117,9 @@ def train_step(batch_size):  # 636
     target_Q_values.double()
 
     # create a mask
-    mask = one_hot(actions, 4) # mask will be used to zero out the q values predictions from the model
+    mask = one_hot(actions, 4)  # mask will be used to zero out the q values predictions from the model
     q_values_with_zeros = model(states)
-    q_values = torch.sum(q_values_with_zeros * mask, axis=1, keepdim=True,dtype=torch.double) # tensor of q_values for each sampled experience
+    q_values = torch.sum(q_values_with_zeros * mask, axis=1, keepdim=True, dtype=torch.double)  # tensor of q_values for each sampled experience
 
     # q_values shape was [N,1] transpose q_values and get first element so shape is [N] to match target_q_values
     q_values = torch.transpose(q_values, 0, 1)[0]
@@ -125,28 +128,44 @@ def train_step(batch_size):  # 636
     loss = loss_fn(q_values, target_Q_values)
 
     # back propogate
-    loss.backward() # compute gradients
-    optimizer.step() # update weights
-    optimizer.zero_grad() # release gradients
+    loss.backward()  # compute gradients
+    optimizer.step()  # update weights
+    optimizer.zero_grad()  # release gradients
 
 
 def main():
-    no_episodes = 500
-    no_episodes_before_training = 50
+    try:
+        experiment = Experiment()
 
-    for ep in range(no_episodes):
-        board = Board2048()
-        done = False
-        while not done:
-            epsilon = max((1 - ep) / no_episodes, 0.3)  #  value to determine how greedy the policy should be for that step
-            board, reward, done = play_one_step(board, epsilon)
-            if done:
-                break
-        print(f"Episode: {ep}: {board.merge_score()}, {np.max(board.state.flatten())}")
-        if ep > no_episodes_before_training:
-            train_step(batch_size)
+        no_episodes = 500
+        no_episodes_before_training = 50
 
+        experiment.add_hyperparameter({
+            'no_episodes': no_episodes,
+            'no_episodes_before_training': no_episodes_before_training,
+        })
 
+        for ep in range(no_episodes):
+            board = Board2048()
+            done = False
+            while not done:
+                epsilon = max((1 - ep) / no_episodes, 0.3)  # value to determine how greedy the policy should be for that step
+                board, reward, done = play_one_step(board, epsilon)
+
+            experiment.add_episode(board, epsilon, ep, reward)
+            print(f"Episode: {ep}: {board.merge_score()}, {np.max(board.state.flatten())}")
+            if ep > no_episodes_before_training:
+                train_step(batch_size)
+
+        experiment.save()
+
+    except KeyboardInterrupt or Exception as e:
+        try:
+            print('Keyboard interupt caught, saving current experiment')
+            experiment.save()
+        except Exception as e:
+            print(e)
+            print("Can save your experiment to disk.")
 
 
 """Notes:

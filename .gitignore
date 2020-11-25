@@ -1,5 +1,6 @@
 # developer specific stuff
 .vscode
+experiments/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
