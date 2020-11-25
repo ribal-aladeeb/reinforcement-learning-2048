@@ -56,7 +56,7 @@ class Experiment:
                 os.mkdir(os.path.join(EXPERIMENTS_DIRECTORY, folder_name))
                 return os.path.join(EXPERIMENTS_DIRECTORY, folder_name)
             except FileExistsError:
-                print(f'File {folder_name} already exists')
+                print(f'File {folder_name} already exists. Different folder name will be used.')
 
         latest = 0 if len(exp_folders) == 0 else max([int(filename[4:filename.find('_', 4)]) for filename in exp_folders])
 
