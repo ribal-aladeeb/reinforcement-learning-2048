@@ -56,7 +56,7 @@ no_episodes_before_updating_target = 100
 use_double_dqn = True
 job_name = input("What is the job name: ")
 if job_name:
-    experiment = Experiment(folder_name)
+    experiment = Experiment(job_name)
 else:
     experiment = Experiment()
 experiment.add_hyperparameter({
