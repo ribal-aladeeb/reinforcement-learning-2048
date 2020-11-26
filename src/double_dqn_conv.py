@@ -45,13 +45,13 @@ model = nn.Sequential(
 ).double().to(device=device)
 
 batch_size = 5000  # number of experiences to sample
-discount_factor = 0.80  # used in q-learning equation (Bellman equation)
+discount_factor = 0.95  # used in q-learning equation (Bellman equation)
 target_model = copy.deepcopy(model)
-replay_buffer = deque(maxlen=15000)  # [(state, action, reward, next_state, done),...]
-learning_rate = 1e-4  # optimizer for gradient descent
+replay_buffer = deque(maxlen=15000)  # contains experiences (or episodes) [(state, action, reward, next_state, done),...]
+learning_rate = 1e-4  # optimizer for gradient descent within Adam
 loss_fn = nn.MSELoss(reduction='sum')
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-no_episodes = 50000
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) # Variant of SGD
+no_episodes = 25000
 no_episodes_to_reach_epsilon = 1000
 min_epsilon = 0.01
 no_episodes_before_training = 2000
