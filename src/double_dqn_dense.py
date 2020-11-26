@@ -235,17 +235,14 @@ def main():
         experiment.save()
 
     except KeyboardInterrupt as e:
-        try:
-            print(e)
-            print(f'Keyboard interrut caught. Saving current experiment in {experiment.folder}')
-            experiment.save()
-        except Exception as e:
-            print(e)
-            print("Error while saving your experiment to disk.")
+        print(e)
+        print(f'Keyboard interrut caught. Saving current experiment in {experiment.folder}')
+        experiment.save()
+
     except Exception as e:
         experiment.save()
         print(f'Saving current experiment in {experiment.folder}')
-        raise
+        raise e
 
 
 if __name__ == "__main__":
