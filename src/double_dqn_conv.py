@@ -52,7 +52,7 @@ learning_rate = 1e-4  # optimizer for gradient descent
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 no_episodes = 50000
-no_episodes_to_reach_epsilon = 10000
+no_episodes_to_reach_epsilon = 1000
 min_epsilon = 0.01
 no_episodes_before_training = 2000
 no_episodes_before_updating_target = 100
@@ -221,6 +221,8 @@ def main():
             if ep % no_episodes_before_updating_target == 0:
                 print("Updating Model")
                 target_model.load_state_dict(copy.deepcopy(model.state_dict()))
+            if ep % 10 == 0:
+                experiment.save()
 
         experiment.save()
 

@@ -105,13 +105,11 @@ class Experiment:
     def save(self):
         elapsed = time.time()-self.runtime
 
-        self.runtime = time.strftime('%H:%M:%S', time.gmtime(elapsed))
-
         with open(os.path.join(self.folder, 'text/hyperparams.json'), mode='w') as f:
             json.dump(self.hyperparameters, f, indent=4)
 
         with open(os.path.join(self.folder, 'text/runtime.txt'), mode='w') as f:
-            f.write(self.runtime)
+            f.write(time.strftime('%H:%M:%S', time.gmtime(elapsed)))
 
         with open(os.path.join(self.folder, 'binary/hyperparameters.p'), mode='wb') as f:
             pickle.dump(self.hyperparameters, f)
