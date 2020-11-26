@@ -129,15 +129,15 @@ def compute_reward(board, next_board, action, done):
     Here a reward is defined as the number of merges. If the max value of the
     board has increase, add np.log2(next_max) * 0.1 to the reward.
     '''
-    previous_max = np.max(board.state)
+    '''previous_max = np.max(board.state)
     next_max = np.max(next_board.state)
     no_empty_previous = board.number_of_empty_cells()
     no_empty_next = next_board.number_of_empty_cells()
     number_of_merges = (no_empty_next - no_empty_previous)+1  # number of merges done
     reward = number_of_merges
     if next_max > previous_max:
-        reward += np.log2(next_max)*0.1
-    return reward
+        reward += np.log2(next_max)*0.1'''
+    return next_board.merge_score() - board.merge_score()
 
 def play_one_step(board, epsilon):
     action, done = epsilon_greedy_policy(board, epsilon)

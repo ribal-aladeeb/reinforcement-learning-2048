@@ -11,7 +11,8 @@ import numpy as np
 import json
 import pickle
 import time
-import datetime
+import sys
+
 
 EXPERIMENTS_DIRECTORY = 'experiments/'
 
@@ -19,6 +20,24 @@ EXPERIMENTS_DIRECTORY = 'experiments/'
 def ensure_exists(dir: str):
     if not os.path.isdir(dir):
         os.mkdir(dir)
+
+def get_project_root_dir() -> str:
+    # because the root of the project contains the .git/ repo
+    while not os.path.isdir('.git/'):
+        if os.getcwd() == '/':
+            print('\nYou are trying to get the root folder of the big data project')
+            print('but you are running this script outside of the project.')
+            print('Navigate to the project directory and try again.')
+            exit(1)
+        else:
+            os.chdir('..')
+    if sys.platform == "linux":
+        return f'{os.getcwd()}/'
+    elif sys.platform == "win32":
+        return f'{os.getcwd()}/'
+    else:
+        raise OSError("Not implemented for Mac OS")
+        return f'file://{os.getcwd()}/' # change for mac
 
 
 class Experiment:
@@ -37,7 +56,7 @@ class Experiment:
             pass
             return
 
-        self.folder = self.create_exp_folder(folder_name)
+        self.folder = os.path.join(get_project_root_dir(), self.create_exp_folder(folder_name))
 
         ensure_exists(self.folder)
         os.mkdir(os.path.join(self.folder, 'text/'))

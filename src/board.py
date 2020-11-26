@@ -52,6 +52,42 @@ class Board2048:
     def _reverse_vector(self, vector: np.array) -> np.array:
         return np.flip(vector)
 
+    def _apply_action_to_tensor(self, tensor: torch.Tensor) -> torch.Tensor:
+        tensor = np.copy(tensor)
+        current = 0
+
+        while current < len(tensor)-1:
+            non_zero_indices = torch.nonzero(tensor, as_tuple=True)[0]  # non zero indices (updated)
+
+            # ensure that value of current is non-zero
+            if len(non_zero_indices) == 0 or non_zero_indices[-1] <= current:
+                return tensor
+            else:
+                non_zero_indices = non_zero_indices[current < non_zero_indices]
+                if len(non_zero_indices) == 0:
+                    return tensor
+
+            if tensor[current] == 0:
+                # we know that there is a non_zero value at an index further than current
+                tensor[current] += tensor[non_zero_indices[0]]
+                tensor[non_zero_indices[0]] = 0
+            elif tensor[current] == tensor[non_zero_indices[0]]:
+                # we know that there is a non_zero value at an index further than current
+                tensor[current] += tensor[non_zero_indices[0]]
+                self._mergescore += tensor[current]
+                tensor[non_zero_indices[0]] = 0
+                current += 1
+            elif current + 1 == non_zero_indices[0]:
+                current += 1
+                continue
+            else:
+                # you have a non-zero entry at vector[current] and you have a non-zero entry somewhere further than current, but you don't know how many 0 are in between
+                tensor[current+1] = tensor[non_zero_indices[0]]
+                tensor[non_zero_indices[0]] = 0
+                current += 1
+
+        return tensor
+
     def _apply_action_to_vector(self, vector: np.array) -> np.array:
         vector = np.copy(vector)
         current = 0
