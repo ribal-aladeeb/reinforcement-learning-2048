@@ -1,11 +1,3 @@
-
-"""
-1) Create experiement folder 'exp_#_somehash'
-2) a pickle folder, and a text folder
-3)
-5)
-"""
-
 import os
 import numpy as np
 import json
@@ -42,7 +34,7 @@ def get_project_root_dir() -> str:
 
 class Experiment:
 
-    def __init__(self, resumed=False, folder_name=None):
+    def __init__(self, resumed=False, folder_name=None, python_file_name=None):
         ensure_exists(EXPERIMENTS_DIRECTORY)
 
         if resumed:
@@ -65,6 +57,15 @@ class Experiment:
         self.hyperparameters = {}
         self.episodes = []
         self.runtime = time.time()
+
+        if python_file_name:
+            self._save_python_file(python_file_name)
+
+    def _save_python_file(self, python_file_name):
+        ugly_path = os.path.join(os.path.dirname(__file__), python_file_name)
+        ugly_src = os.path.join(self.folder, f'{python_file_name}.txt')
+        from shutil import copyfile
+        copyfile(ugly_path, ugly_src)
 
     def create_exp_folder(self, folder_name=None):
 
@@ -119,3 +120,4 @@ class Experiment:
 
         with open(os.path.join(self.folder, 'binary/episodes.p'), mode='wb') as f:
             pickle.dump(self.episodes, f)
+

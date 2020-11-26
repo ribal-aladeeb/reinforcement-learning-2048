@@ -1,4 +1,4 @@
-from board import Board2048
+from src.board import Board2048
 import grappa
 import numpy as np
 

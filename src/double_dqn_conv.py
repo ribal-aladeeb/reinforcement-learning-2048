@@ -12,6 +12,7 @@ import torch.nn as nn
 import numpy as np
 import logging
 import copy
+import os
 from experiments import Experiment
 if not torch.cuda.is_available():
     logging.warning("No GPU: Cuda is not utilized")
@@ -49,7 +50,7 @@ target_model = copy.deepcopy(model)
 replay_buffer = deque(maxlen=15000)  # [(state, action, reward, next_state, done),...]
 learning_rate = 1e-4  # optimizer for gradient descent
 loss_fn = nn.MSELoss(reduction='sum')
-optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 no_episodes = 50000
 no_episodes_to_reach_epsilon = 10000
 min_epsilon = 0.01
@@ -60,9 +61,10 @@ use_double_dqn = True
 job_name = input("What is the job name: ")
 
 if job_name:
-    experiment = Experiment(folder_name=job_name)
+    experiment = Experiment(folder_name=job_name, python_file_name=os.path.basename(__file__))
 else:
-    experiment = Experiment()
+    experiment = Experiment(python_file_name=os.path.basename(__file__))
+
 experiment.add_hyperparameter({
     'batch_size': batch_size,
     'discount_factor' :discount_factor,
