@@ -52,8 +52,7 @@ class Experiment:
         if resumed:
             self.folder = os.path.join(get_project_root_dir(), EXPERIMENTS_DIRECTORY, folder_name)
             assert os.path.isdir(self.folder), f'You wish to resume an experiment which does not exist: {folder_name}'
-            assert(model != None and loss != None or optimizer != None,
-                   f'If resumed=True, model, loss, and optimizer have to be the exact same object types used when experiment was first created.')
+            assert model != None and loss != None or optimizer != None, f'If resumed=True, model, loss, and optimizer have to be the exact same object types used when experiment was first created.'
             self.model = model
             self.loss = loss
             self.optimizer = optimizer
