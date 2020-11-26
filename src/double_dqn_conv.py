@@ -61,9 +61,18 @@ use_double_dqn = True
 job_name = input("What is the job name: ")
 
 if job_name:
-    experiment = Experiment(folder_name=job_name, python_file_name=os.path.basename(__file__))
+    experiment = Experiment(
+        python_file_name = os.path.basename(__file__),
+        folder_name=job_name,
+        model=model,
+        loss=loss_fn,
+        optimizer=optimizer)
 else:
-    experiment = Experiment(python_file_name=os.path.basename(__file__))
+    experiment = Experiment(
+        python_file_name = os.path.basename(__file__),
+        model=model,
+        loss=loss_fn,
+        optimizer=optimizer)
 
 experiment.add_hyperparameter({
     'batch_size': batch_size,
@@ -226,11 +235,15 @@ def main():
 
         experiment.save()
 
-    except KeyboardInterrupt or Error or Exception as e:
-        print(f'\nSome Error was caught, saving experiment in {experiment.folder}\n')
+    except KeyboardInterrupt as e:
+        print(e)
+        print(f'\nKeyboard interrut caught. Saving current experiment in {experiment.folder}')
         experiment.save()
-        if e is not KeyboardInterrupt:
-            print(e)
+
+    except Error or Exception as e:
+        experiment.save()
+        print(f'\nSaving current experiment in {experiment.folder}\n')
+        raise e
 
 if __name__ == "__main__":
     main()

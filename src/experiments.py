@@ -5,6 +5,8 @@ import json
 import pickle
 import time
 import sys
+import torch
+import shutil
 
 
 EXPERIMENTS_DIRECTORY = 'experiments/'
@@ -13,6 +15,7 @@ EXPERIMENTS_DIRECTORY = 'experiments/'
 def ensure_exists(dir: str):
     if not os.path.isdir(dir):
         os.mkdir(dir)
+
 
 def get_project_root_dir() -> str:
     # because the root of the project contains the .git/ repo
@@ -26,47 +29,76 @@ def get_project_root_dir() -> str:
             os.chdir('..')
     if sys.platform == "linux":
         return f'{os.getcwd()}/'
+
     elif sys.platform == "win32":
         return f'{os.getcwd()}/'
     else:
         raise OSError("Not implemented for Mac OS")
-        return f'file://{os.getcwd()}/' # change for mac
+        return f'file://{os.getcwd()}/'  # change for mac
 
 
 class Experiment:
 
-    def __init__(self, resumed=False, folder_name=None, python_file_name=None):
+    def __init__(self,
+                 resumed=False,
+                 folder_name=None,
+                 python_file_name=None,
+                 model=None,
+                 loss=None,
+                 optimizer=None):
+
         ensure_exists(EXPERIMENTS_DIRECTORY)
 
         if resumed:
-            # TODO implement the loading of an existing experiment
+            self.folder = os.path.join(get_project_root_dir(), EXPERIMENTS_DIRECTORY, folder_name)
+            assert os.path.isdir(self.folder), f'You wish to resume an experiment which does not exist: {folder_name}'
+            assert(model != None and loss != None or optimizer != None,
+                   f'If resumed=True, model, loss, and optimizer have to be the exact same object types used when experiment was first created.')
+            self.model = model
+            self.loss = loss
+            self.optimizer = optimizer
+            model_path = os.path.join(self.folder, 'binary/model.tar')
+            checkpoint = torch.load(model_path)
+            self.model.load_state_dict(checkpoint['model_state_dict'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            self.episode_count = checkpoint['episode']
+            self.loss = checkpoint['loss']
 
-            # if resumed:
-            #     # make sure folder name arg is the same as the one being resumed
-            #     assert folder_name != None, 'You did not provide an experiment name to resume from'
-            #     assert folder_name in exp_folders, f'Experiment you wish to resume {folder_name} does not exist'
-            #     # leave this usecase for later
-            pass
-            return
-        self.folder_name = folder_name
-        self.folder = os.path.join(get_project_root_dir(), self.create_exp_folder(folder_name))
+            with open(os.path.join(self.folder, 'binary/hyperparameters.p'), mode='rb') as target:
+                self.hyperparameters = pickle.load(target)
 
-        ensure_exists(self.folder)
-        os.mkdir(os.path.join(self.folder, 'text/'))
-        os.mkdir(os.path.join(self.folder, 'binary/'))
+            with open(os.path.join(self.folder, 'binary/runtime.p'), mode='rb') as target:
+                self.runtime = pickle.load(target)
 
-        self.hyperparameters = {}
-        self.episodes = []
-        self.runtime = time.time()
+            with open(os.path.join(self.folder, 'binary/episodes.p'), mode='rb') as target:
+                self.episodes = pickle.load(target)
 
-        if python_file_name:
-            self._save_python_file(python_file_name)
+        else:
+            self.folder = os.path.join(get_project_root_dir(), self.create_exp_folder(folder_name))
+
+            ensure_exists(self.folder)
+            os.mkdir(os.path.join(self.folder, 'text/'))
+            os.mkdir(os.path.join(self.folder, 'binary/'))
+
+            self.hyperparameters = {}
+            self.episodes = []
+            self.model = model
+            self.loss = loss
+            self.optimizer = optimizer
+
+            if self.model != None:
+                assert self.loss != None, "If you provide a model to be saved you also need to provide the loss"
+                assert self.optimizer != None, "If you provide a model to be saved you also need to provide the optimizer"
+
+            if python_file_name:
+                self._save_python_file(python_file_name)
+
+            self.runtime = time.time()
 
     def _save_python_file(self, python_file_name):
-        ugly_path = os.path.join(os.path.dirname(__file__), python_file_name)
-        ugly_src = os.path.join(self.folder, f'{python_file_name}.txt')
-        from shutil import copyfile
-        copyfile(ugly_path, ugly_src)
+        ugly_src = os.path.join(os.path.dirname(__file__), python_file_name)
+        ugly_dst = os.path.join(self.folder, f'{python_file_name}.txt')
+        shutil.copyfile(ugly_src, ugly_dst)
 
     def create_exp_folder(self, folder_name=None):
 
@@ -88,7 +120,7 @@ class Experiment:
         Mapping should be a dict with single key value pair that has the name of
         the hyperparameter and its value.
         '''
-        assert type(mapping) == dict
+        assert type(mapping) == dict, 'When adding hyperparameters, pass them as dict'
         self.hyperparameters.update(mapping)
 
     def add_episode(self, board, epsilon, number, reward):
@@ -103,13 +135,14 @@ class Experiment:
         self.episodes.append(episode)
 
     def save(self):
-        elapsed = time.time()-self.runtime
 
         with open(os.path.join(self.folder, 'text/hyperparams.json'), mode='w') as f:
             json.dump(self.hyperparameters, f, indent=4)
 
         with open(os.path.join(self.folder, 'text/runtime.txt'), mode='w') as f:
-            f.write(time.strftime('%H:%M:%S', time.gmtime(elapsed)))
+            elapsed = time.time()-self.runtime
+            formated_runtime: str = time.strftime('%H:%M:%S', time.gmtime(elapsed))
+            f.write(formated_runtime)
 
         with open(os.path.join(self.folder, 'binary/hyperparameters.p'), mode='wb') as f:
             pickle.dump(self.hyperparameters, f)
@@ -120,5 +153,11 @@ class Experiment:
         with open(os.path.join(self.folder, 'binary/episodes.p'), mode='wb') as f:
             pickle.dump(self.episodes, f)
 
-
-
+        if self.model != None:
+            model_filename = os.path.join(self.folder, 'binary/model.tar')
+            torch.save({
+                'episode': self.episodes[-1]['number'],
+                'model_state_dict': self.model.state_dict(),
+                'optimizer_state_dict': self.optimizer.state_dict(),
+                'loss': self.loss,
+            }, model_filename)
