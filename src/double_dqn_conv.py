@@ -221,7 +221,7 @@ def main():
             if ep % no_episodes_before_updating_target == 0:
                 print("Updating Model")
                 target_model.load_state_dict(copy.deepcopy(model.state_dict()))
-            if ep % 10 == 0:
+            if ep % 1000 == 0:
                 experiment.save()
 
         experiment.save()

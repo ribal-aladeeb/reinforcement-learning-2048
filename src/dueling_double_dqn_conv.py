@@ -224,6 +224,8 @@ def main():
             if ep % no_episodes_before_updating_target == 0:
                 print("Updating Model")
                 target_model.load_state_dict(copy.deepcopy(model.state_dict()))
+            if ep % 1000 == 0:
+                experiment.save()
 
         torch.save(model)
         experiment.save()
@@ -231,7 +233,8 @@ def main():
     except KeyboardInterrupt or Error or Exception as e:
         print(f'\nSome Error was caught, saving experiment in {experiment.folder}\n')
         experiment.save()
-        raise e
+        if e is not KeyboardInterrupt:
+            print(e)
 
 if __name__ == "__main__":
     main()
