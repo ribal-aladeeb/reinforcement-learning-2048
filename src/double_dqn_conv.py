@@ -3,6 +3,7 @@ This will become a convolutional network
 '''
 from collections import deque
 from copy import Error
+from logging import error
 import pprint
 from torch import tensor
 from board import Board2048
@@ -201,7 +202,6 @@ def train_step(batch_size):  # 636
 
 def main():
     try:
-
         for ep in range(no_episodes):
             board = Board2048()
             done = False
@@ -222,14 +222,10 @@ def main():
 
         experiment.save()
 
-    except:
-        try:
-            print(f'Keyboard interupt caught, saving current experiment in {experiment.folder}')
-            experiment.save()
-        except Exception as e:
-            print(e)
-            print("Error while saving your experiment to disk.")
-
+    except KeyboardInterrupt or Error or Exception as e:
+        print(f'\nSome Error was caught, saving experiment in {experiment.folder}\n')
+        experiment.save()
+        raise e
 
 if __name__ == "__main__":
     main()
