@@ -2,8 +2,9 @@ from __future__ import annotations  # in order to allow type hints for a class r
 import numpy as np
 from typing import List, Dict
 import random
-import numpy
 import torch
+
+
 class Board2048:
 
     def __init__(self, k: int = 4, populate_empty_cells=True):
