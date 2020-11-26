@@ -52,7 +52,7 @@ learning_rate = 1e-4  # optimizer for gradient descent within Adam
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) # Variant of SGD
 no_episodes = 25000
-no_episodes_to_reach_epsilon = 1000
+no_episodes_to_reach_epsilon = 2000
 min_epsilon = 0.01
 no_episodes_before_training = 2000
 no_episodes_before_updating_target = 100
