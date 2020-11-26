@@ -151,7 +151,6 @@ class Board2048:
         if not np.equal(result_matrix, board.state).all():
             board.state = result_matrix
             board._populate_empty_cell()
-        # board._board_state_history.append(board.state)
         return board
 
     def down(self) -> Board2048:
@@ -162,7 +161,6 @@ class Board2048:
         if not np.equal(result_matrix, board.state).all():
             board.state = result_matrix
             board._populate_empty_cell()
-        # board._board_state_history.append(board.state)
         return board
 
     def left(self) -> Board2048:
@@ -172,7 +170,6 @@ class Board2048:
         if not np.equal(result_matrix, board.state).all():
             board.state = result_matrix
             board._populate_empty_cell()
-        # board._board_state_history.append(board.state)
         return board
 
     def right(self) -> Board2048:
@@ -183,7 +180,6 @@ class Board2048:
         if not np.equal(result_matrix, board.state).all():
             board.state = result_matrix
             board._populate_empty_cell()
-        # board._board_state_history.append(board.state)
         return board
 
     def peek_action(self, action: str) -> Board2048:

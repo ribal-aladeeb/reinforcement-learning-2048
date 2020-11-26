@@ -92,7 +92,7 @@ def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
     if np.random.rand() < epsilon:
         return np.random.randint(4), done
     else:
-        state = board.state_as_4d_tensor().to(device)
+        state = board.normalized().state_as_4d_tensor().to(device)
         Q_values = model(state)
 
         available_Q_values = available_moves * Q_values
@@ -116,8 +116,8 @@ def sample_experiences(batch_size):
 
     for experience in batch:
         board, action, reward, next_board, done = experience
-        state = board.state_as_4d_tensor().to(device)
-        next_state = next_board.state_as_4d_tensor().to(device)
+        state = board.normalized().state_as_4d_tensor().to(device)
+        next_state = next_board.normalized().state_as_4d_tensor().to(device)
         actions.append(action)
         rewards.append(reward)
         dones.append(int(done))

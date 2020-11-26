@@ -1,4 +1,5 @@
 import os
+from shutil import copy
 import numpy as np
 import json
 import pickle
@@ -47,7 +48,7 @@ class Experiment:
             #     # leave this usecase for later
             pass
             return
-
+        self.folder_name = folder_name
         self.folder = os.path.join(get_project_root_dir(), self.create_exp_folder(folder_name))
 
         ensure_exists(self.folder)
@@ -120,4 +121,6 @@ class Experiment:
 
         with open(os.path.join(self.folder, 'binary/episodes.p'), mode='wb') as f:
             pickle.dump(self.episodes, f)
+
+
 
