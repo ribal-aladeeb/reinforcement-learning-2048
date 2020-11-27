@@ -57,6 +57,7 @@ min_epsilon = 0.01
 no_episodes_before_training = 1000
 no_episodes_before_updating_target = 500
 use_double_dqn = True
+snapshot_game_every_n_episodes = 100
 
 job_name = input("What is the job name: ")
 
@@ -105,7 +106,7 @@ def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
         # V = torch.max(Q_values) # best q_value
 
         next_action: torch.Tensor = torch.argmax(available_Q_values)
-        return int(next_action), int(done)
+        return int(next_action), int(done), torch.max(Q_values)
 
 
 def sample_experiences(batch_size):
@@ -152,7 +153,7 @@ def compute_reward(board, next_board, action, done):
     return next_board.merge_score() - board.merge_score()
 
 def play_one_step(board, epsilon):
-    action, done = epsilon_greedy_policy(board, epsilon)
+    action, done, max_q_value = epsilon_greedy_policy(board, epsilon)
 
     # take the board and perform action
     next_board = board.peek_action(action)
@@ -161,7 +162,7 @@ def play_one_step(board, epsilon):
 
     # priority = compute_priority(board, reward, next_board)
     replay_buffer.append((board, action, reward, next_board, done))
-    return next_board, action, reward, done
+    return next_board, action, reward, done, max_q_value
 
 
 def one_hot(tensor, no_outputs):
@@ -217,12 +218,18 @@ def main():
             board = Board2048()
             done = False
             board_history = []
+            rewards = []
+            q_values = []
             while not done:
                 epsilon = max((no_episodes_to_reach_epsilon - ep) / no_episodes_to_reach_epsilon, min_epsilon)  # value to determine how greedy the policy should be for that step
-                new_board, action, reward, done = play_one_step(board, epsilon)
-                board_history.append((board, ['u', 'd', 'l', 'r'][int(action)], reward))
+                new_board, action, reward, done, max_q_value = play_one_step(board, epsilon)
+                board_history.append((board.state, ['u', 'd', 'l', 'r'][int(action)], reward))
+                rewards.append(reward)
+                q_values.append(q_values)
                 board = new_board
-            experiment.add_episode(board, epsilon, ep, reward)
+            experiment.add_episode(board, epsilon, ep, np.mean(np.array(rewards)), np.mean(np.array(q_values)))
+            if ep % snapshot_game_every_n_episodes == 0:
+                experiment.snapshot_game(board_history, ep)
             if ep % 50 == 0:
                 print(f"Episode: {ep}: {board.merge_score()}, {np.max(board.state.flatten())}, {len(board._action_history)}")
             if ep > no_episodes_before_training:

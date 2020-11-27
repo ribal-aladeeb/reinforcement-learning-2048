@@ -78,6 +78,7 @@ class Experiment:
             ensure_exists(self.folder)
             os.mkdir(os.path.join(self.folder, 'text/'))
             os.mkdir(os.path.join(self.folder, 'binary/'))
+            os.mkdir(os.path.join(self.folder, 'binary/board_histories/'))
 
             self.hyperparameters = {}
             self.episodes = []
@@ -122,16 +123,21 @@ class Experiment:
         assert type(mapping) == dict, 'When adding hyperparameters, pass them as dict'
         self.hyperparameters.update(mapping)
 
-    def add_episode(self, board, epsilon, number, reward):
+    def add_episode(self, board, epsilon, number, reward, mean_q_value=None):
         episode = {
             'max_tile': np.max(board.state.flatten()),
             'merge_score': board.merge_score(),
             'number': number,
             'reward': reward,
+            'q_value': mean_q_value,
             'epsilon': epsilon,
             'number_moves': len(board._action_history)
         }
         self.episodes.append(episode)
+
+    def snapshot_game(self, board_history, episode):
+        with open(os.path.join(self.folder, f'binary/board_histories/episode_{episode}.p'), mode='wb') as f:
+            pickle.dump(board_history, f)
 
     def save(self):
 
