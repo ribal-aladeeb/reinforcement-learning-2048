@@ -3,13 +3,18 @@ import numpy as np
 from typing import List, Dict
 import random
 import torch
+from torch import tensor
 
 
 class Board2048:
 
-    def __init__(self, k: int = 4, populate_empty_cells=True):
-        self.state: np.array = np.zeros(shape=(k, k), dtype=int)
-        self._empty_spot_numbers: List[int] = [2, 4]
+    def __init__(self, k: int = 4, populate_empty_cells=True, device=None):
+        if device is None and not torch.cuda.is_available():
+            device = "cpu"
+        elif device is None:
+            device = "cuda:0"
+        self.state: torch.Tensor = torch.zeros(size=(k, k), device=device)
+        self._empty_spot_numbers: List[int] = torch.tensor([2, 4])
         self._mergescore = 0
         self._action_history = []
         self.k = k
@@ -19,42 +24,43 @@ class Board2048:
             self._populate_empty_cell()
             self._populate_empty_cell()
 
-        # self._board_state_history = [self.state.copy()]
-
     def clone(self) -> Board2048:
         board = Board2048(k=self.k, populate_empty_cells=self.populate_empty_cells)
-        board.state: np.array = np.copy(self.state)
+        board.state = self.state.clone()
         board._mergescore: int = self._mergescore
         board._action_history: List[str] = self._action_history.copy()
-        # board._board_state_history: List[np.array] = [state.copy() for state in self._board_state_history]
+
         return board
 
     def __repr__(self):
         return str(self.state)
 
     def __contains__(self, element) -> bool:
-        return np.isin(element, self.state).all()
+        return element in self.state
 
     def __eq__(self, other: Board2048):
-        return (self.state == other.state).all()  # and self._action_history() == other._action_history()
+        return torch.eq(self.state, other.state)
 
     def _populate_empty_cell(self) -> Board2048:
         """
         This method checks the board for an empty cell (contains 0)
         and populates one empty cell chosen at random with either a 2 or a 4
         """
-        indices = np.array(np.where(self.state == 0)).T
-        i = random.randint(0, len(indices)-1)
+        indices = ((self.state == 0).nonzero())
+        i = torch.randint(0, len(indices)-1,(1,))
         x, y = indices[i]
-        number = np.random.choice(self._empty_spot_numbers, 1)
+        number = self._empty_spot_numbers[torch.randint(0, 2,(1,))[0]]
         self.state[x, y] = number
         return self
 
     def _reverse_vector(self, vector: np.array) -> np.array:
         return np.flip(vector)
 
+    def _reverse_vector_tensor(self, tensor: torch.Tensor) -> torch.Tensor:
+        return torch.flip(tensor, dims=(0,))
+
     def _apply_action_to_tensor(self, tensor: torch.Tensor) -> torch.Tensor:
-        tensor = np.copy(tensor)
+        tensor = tensor.clone()
         current = 0
 
         while current < len(tensor)-1:
@@ -130,7 +136,7 @@ class Board2048:
         unit_vector = torch.zeros(4, device=device)
         for i, move in enumerate(moves):
             board = self.peek_action(move)
-            if not (self.state == board.state).all():
+            if not self == board:
                 unit_vector[i] = 1
         return unit_vector
 
@@ -138,9 +144,9 @@ class Board2048:
     def available_moves(self) -> Dict[str, Board2048]:
         moves = ['up', 'down', 'left', 'right']
         mapping = dict()
-        for i, move in enumerate(moves):
+        for move in moves:
             board = self.peek_action(move)
-            if not (self.state == board.state).all():
+            if not self == board:
                 mapping[move] = board
         return mapping
 
