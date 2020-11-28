@@ -34,9 +34,7 @@ s: stride
 the resulting output feature map (assuming they are all squares) will be SHAPE x SHAPE
 '''
 model = nn.Sequential(
-    torch.nn.Linear(in_features=16, out_features=2048),
-    torch.nn.ReLU(),
-    torch.nn.Linear(in_features=2048, out_features=1024),
+    torch.nn.Linear(in_features=16, out_features=1024),
     torch.nn.ReLU(),
     torch.nn.Linear(in_features=1024, out_features=512),
     torch.nn.ReLU(),
@@ -51,15 +49,15 @@ print(model(b))
 batch_size = 5000  # number of experiences to sample
 discount_factor = 0.95  # used in q-learning equation (Bellman equation)
 target_model = copy.deepcopy(model)
-replay_buffer = deque(maxlen=15000)  # [(state, action, reward, next_state, done),...]
-learning_rate = 1e-4  # optimizer for gradient descent
+replay_buffer = deque(maxlen=50000)  # [(state, action, reward, next_state, done),...]
+learning_rate = 1e-3  # optimizer for gradient descent
 loss_fn = nn.MSELoss(reduction='sum')
-optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 no_episodes = 50000
-no_episodes_to_reach_epsilon = 10000
+no_episodes_to_reach_epsilon = 2000
 min_epsilon = 0.01
-no_episodes_before_training = 1000
-no_episodes_before_updating_target = 200
+no_episodes_before_training = 500
+no_episodes_before_updating_target = 50
 use_double_dqn = True
 job_name = input("What is the job name: ")
 
@@ -153,6 +151,8 @@ def compute_reward(board, next_board, action, done):
     Here a reward is defined as the number of merges. If the max value of the
     board has increase, add np.log2(next_max) * 0.1 to the reward.
     '''
+    return next_board.merge_score() - board.merge_score()
+    # changed the reward function
     previous_max = np.max(board.state)
     next_max = np.max(next_board.state)
     no_empty_previous = board.number_of_empty_cells()
