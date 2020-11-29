@@ -45,12 +45,12 @@ batch_size = 5000  # number of experiences to sample
 discount_factor = 0.95  # used in q-learning equation (Bellman equation)
 target_model = copy.deepcopy(model)
 replay_buffer = deque(maxlen=50000)  # [(state, action, reward, next_state, done),...]
-learning_rate = 1e-3  # optimizer for gradient descent
+learning_rate = 1e-2  # optimizer for gradient descent
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 no_episodes = 50000
 no_episodes_to_reach_epsilon = 2000
-min_epsilon = 0.01
+min_epsilon = 0  # meaning at a certain point, there is no random moves
 no_episodes_before_training = 500
 no_episodes_before_updating_target = 50
 use_double_dqn = True
@@ -60,17 +60,15 @@ job_name = input("What is the job name: ")
 
 if job_name:
     experiment = Experiment(
-        python_file_name = os.path.basename(__file__),
+        python_file_name=os.path.basename(__file__),
         folder_name=job_name,
         model=model,
-        loss=loss_fn,
-        optimizer=optimizer)
+    )
 else:
     experiment = Experiment(
-        python_file_name = os.path.basename(__file__),
+        python_file_name=os.path.basename(__file__),
         model=model,
-        loss=loss_fn,
-        optimizer=optimizer)
+    )
 
 experiment.add_hyperparameter({
     'batch_size': batch_size,

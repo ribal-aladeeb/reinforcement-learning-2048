@@ -44,24 +44,16 @@ class Experiment:
                  folder_name=None,
                  python_file_name=None,
                  model=None,
-                 loss=None,
-                 optimizer=None):
+                 ):
 
-        ensure_exists(EXPERIMENTS_DIRECTORY)
+        ensure_exists(os.path.join(get_project_root_dir(), EXPERIMENTS_DIRECTORY))
 
         if resumed:
             self.folder = os.path.join(get_project_root_dir(), EXPERIMENTS_DIRECTORY, folder_name)
             assert os.path.isdir(self.folder), f'You wish to resume an experiment which does not exist: {folder_name}'
-            assert model != None and loss != None or optimizer != None, f'If resumed=True, model, loss, and optimizer have to be the exact same object types used when experiment was first created.'
-            self.model = model
-            self.loss = loss
-            self.optimizer = optimizer
-            model_path = os.path.join(self.folder, 'binary/model.tar')
-            checkpoint = torch.load(model_path)
-            self.model.load_state_dict(checkpoint['model_state_dict'])
-            self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-            self.episode_count = checkpoint['episode']
-            self.loss = checkpoint['loss']
+
+            model_path = os.path.join(self.folder, 'binary/model.pt')
+            self.model = torch.load(model_path)
 
             with open(os.path.join(self.folder, 'binary/hyperparameters.p'), mode='rb') as target:
                 self.hyperparameters = pickle.load(target)
@@ -83,12 +75,6 @@ class Experiment:
             self.hyperparameters = {}
             self.episodes = []
             self.model = model
-            self.loss = loss
-            self.optimizer = optimizer
-
-            if self.model != None:
-                assert self.loss != None, "If you provide a model to be saved you also need to provide the loss"
-                assert self.optimizer != None, "If you provide a model to be saved you also need to provide the optimizer"
 
             if python_file_name:
                 self._save_python_file(python_file_name)
@@ -159,10 +145,16 @@ class Experiment:
             pickle.dump(self.episodes, f)
 
         if self.model != None:
-            model_filename = os.path.join(self.folder, 'binary/model.tar')
-            torch.save({
-                'episode': self.episodes[-1]['number'],
-                'model_state_dict': self.model.state_dict(),
-                'optimizer_state_dict': self.optimizer.state_dict(),
-                'loss': self.loss,
-            }, model_filename)
+            torch.save(self.model, os.path.join(self.folder, 'binary/model.pt'))
+
+    def save_games_played(self, games_history: list) -> None:
+        games_played_file = os.path.join(self.folder, 'binary/games_played.p')
+        total_games_played = []
+        if os.path.isfile(games_played_file):
+            with open(games_played_file, mode='rb') as target:
+                total_games_played = pickle.load(target)
+
+        total_games_played += games_history
+
+        with open(games_played_file, mode='wb') as target:
+            pickle.dump(total_games_played, target)
