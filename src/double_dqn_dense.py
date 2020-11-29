@@ -34,24 +34,26 @@ s: stride
 the resulting output feature map (assuming they are all squares) will be SHAPE x SHAPE
 '''
 model = nn.Sequential(
-    torch.nn.Linear(in_features=16, out_features=1024),
+    torch.nn.Linear(in_features=16, out_features=512),
     torch.nn.ReLU(),
-    torch.nn.Linear(in_features=1024, out_features=512),
+    torch.nn.Linear(in_features=512, out_features=512),
     torch.nn.ReLU(),
-    torch.nn.Linear(in_features=512, out_features=4),
+    torch.nn.Linear(in_features=512, out_features=256),
+    torch.nn.ReLU(),
+    torch.nn.Linear(in_features=256, out_features=4),
 ).double().to(device=device)
 
 batch_size = 5000  # number of experiences to sample
 discount_factor = 0.95  # used in q-learning equation (Bellman equation)
 target_model = copy.deepcopy(model)
-replay_buffer = deque(maxlen=50000)  # [(state, action, reward, next_state, done),...]
+replay_buffer = deque(maxlen=100000)  # [(state, action, reward, next_state, done),...]
 learning_rate = 1e-2  # optimizer for gradient descent
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 no_episodes = 50000
-no_episodes_to_reach_epsilon = 2000
+no_episodes_to_reach_epsilon = 400
 min_epsilon = 0  # meaning at a certain point, there is no random moves
-no_episodes_before_training = 500
+no_episodes_before_training = 200
 no_episodes_before_updating_target = 50
 use_double_dqn = True
 snapshot_game_every_n_episodes = 500
@@ -95,13 +97,14 @@ def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
     if np.random.rand() < epsilon:
         return np.random.randint(4), done, torch.zeros(size=(1,), device=device)
     else:
-        state = board.normalized().state_as_4d_tensor().to(device)
+        state = board.normalized().flattened_state_as_tensor().to(device)
         Q_values = model(state)
 
         available_Q_values = available_moves * Q_values
 
         next_action: torch.Tensor = torch.argmax(available_Q_values)
         return int(next_action), int(done), torch.max(Q_values)
+
 
 
 def sample_experiences(batch_size):
@@ -116,6 +119,7 @@ def sample_experiences(batch_size):
     states = torch.zeros((batch_size, 16), device=device).double()
     next_states = torch.zeros((batch_size, 16), device=device).double()
 
+    i = 0
     for experience in batch:
         board, action, reward, next_board, done = experience
         state = board.normalized().flattened_state_as_tensor().to(device)
@@ -123,12 +127,18 @@ def sample_experiences(batch_size):
         actions.append(action)
         rewards.append(reward)
         dones.append(int(done))
-        states = torch.cat((states, state), dim=0)
-        next_states = torch.cat((next_states, next_state), dim=0)
+        states[i] = state
+        next_states[i] = next_state
+        i += 1
+
+        # states.append(state)
+        # next_states.append(next_state)
 
     actions = torch.tensor(actions, device=device)
     rewards = torch.tensor(rewards, device=device)
     dones = torch.tensor(dones, device=device)
+    # states = torch.tensor(states, device=device)
+    # next_states = torch.tensor(next_states, device=device)
 
     return states, actions, rewards, next_states, dones
 
@@ -138,7 +148,7 @@ def compute_reward(board, next_board, action, done):
 
 
 def play_one_step(board, epsilon):
-    action, done = epsilon_greedy_policy(board, epsilon)
+    action, done, max_q_value = epsilon_greedy_policy(board, epsilon)
 
     # take the board and perform action
     next_board = board.peek_action(action)
@@ -146,7 +156,7 @@ def play_one_step(board, epsilon):
     reward = compute_reward(board, next_board, action, done)
 
     replay_buffer.append((board, action, reward, next_board, done))
-    return next_board, action, reward, done
+    return next_board, action, reward, done, max_q_value
 
 
 def one_hot(tensor, no_outputs):
