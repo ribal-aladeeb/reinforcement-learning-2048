@@ -47,17 +47,17 @@ model = nn.Sequential(
 batch_size = 5000  # number of experiences to sample
 discount_factor = 0.95  # used in q-learning equation (Bellman equation)
 target_model = copy.deepcopy(model)
-replay_buffer = deque(maxlen=30000)  # contains experiences (or episodes) [(state, action, reward, next_state, done),...]
-learning_rate = 1e-4  # optimizer for gradient descent within Adam
+replay_buffer = deque(maxlen=100000)  # contains experiences (or episodes) [(state, action, reward, next_state, done),...]
+learning_rate = 1e-2  # optimizer for gradient descent within Adam
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) # Variant of SGD
-no_episodes = 15000
+no_episodes = 50000
 no_episodes_to_reach_epsilon = 2000
-min_epsilon = 0.01
-no_episodes_before_training = 1000
+min_epsilon = 0.0001
+no_episodes_before_training = 100
 no_episodes_before_updating_target = 100
 use_double_dqn = True
-snapshot_game_every_n_episodes = 500
+snapshot_game_every_n_episodes = 1000
 
 job_name = input("What is the job name: ")
 
