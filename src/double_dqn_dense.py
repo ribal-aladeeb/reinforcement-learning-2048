@@ -233,7 +233,7 @@ def main():
         print(f'\nKeyboard interrut caught. Saving current experiment in {experiment.folder}')
         experiment.save()
 
-    except Error or Exception as e:
+    except Exception as e:
         experiment.save()
         print(f'\nSaving current experiment in {experiment.folder}\n')
         raise e
