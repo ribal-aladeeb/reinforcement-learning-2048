@@ -48,7 +48,7 @@ batch_size = 5000  # number of experiences to sample
 discount_factor = 0.95  # used in q-learning equation (Bellman equation)
 target_model = copy.deepcopy(model)
 replay_buffer = deque(maxlen=100000)  # contains experiences (or episodes) [(state, action, reward, next_state, done),...]
-learning_rate = 1e-2  # optimizer for gradient descent within Adam
+learning_rate = 1e-3  # optimizer for gradient descent within Adam
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) # Variant of SGD
 no_episodes = 50000
@@ -65,15 +65,11 @@ if job_name:
     experiment = Experiment(
         python_file_name = os.path.basename(__file__),
         folder_name=job_name,
-        model=model,
-        loss=loss_fn,
-        optimizer=optimizer)
+        model=model)
 else:
     experiment = Experiment(
         python_file_name = os.path.basename(__file__),
-        model=model,
-        loss=loss_fn,
-        optimizer=optimizer)
+        model=model)
 
 experiment.add_hyperparameter({
     'batch_size': batch_size,
