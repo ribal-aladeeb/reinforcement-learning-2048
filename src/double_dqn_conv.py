@@ -51,11 +51,11 @@ replay_buffer = deque(maxlen=15000)  # contains experiences (or episodes) [(stat
 learning_rate = 1e-4  # optimizer for gradient descent within Adam
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) # Variant of SGD
-no_episodes = 25000
-no_episodes_to_reach_epsilon = 2500
+no_episodes = 15000
+no_episodes_to_reach_epsilon = 2000
 min_epsilon = 0.01
 no_episodes_before_training = 1000
-no_episodes_before_updating_target = 500
+no_episodes_before_updating_target = 100
 use_double_dqn = True
 snapshot_game_every_n_episodes = 100
 
@@ -97,7 +97,7 @@ def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
     done = torch.max(available_moves) == 0
 
     if np.random.rand() < epsilon:
-        return np.random.randint(4), done
+        return np.random.randint(4), done, torch.zeros(size=(1,), device=device)
     else:
         state = board.normalized().state_as_4d_tensor().to(device)
         Q_values = model(state)
@@ -124,6 +124,7 @@ def sample_experiences(batch_size):
     for experience in batch:
         board, action, reward, next_board, done = experience
         state = board.normalized().state_as_4d_tensor().to(device)
+
         next_state = next_board.normalized().state_as_4d_tensor().to(device)
         actions.append(action)
         rewards.append(reward)
@@ -134,6 +135,7 @@ def sample_experiences(batch_size):
     actions = torch.tensor(actions, device=device)
     rewards = torch.tensor(rewards, device=device)
     dones = torch.tensor(dones, device=device)
+    print("type", states[0].dtype)
     return states, actions, rewards, next_states, dones
 
 
@@ -225,9 +227,11 @@ def main():
                 new_board, action, reward, done, max_q_value = play_one_step(board, epsilon)
                 board_history.append((board.state, ['u', 'd', 'l', 'r'][int(action)], reward))
                 rewards.append(reward)
-                q_values.append(q_values)
+                q_values.append(max_q_value)
                 board = new_board
-            experiment.add_episode(board, epsilon, ep, np.mean(np.array(rewards)), np.mean(np.array(q_values)))
+            mean_of_rewards = np.mean(np.array(rewards))
+            mean_of_q_values = torch.mean(torch.tensor(q_values))
+            experiment.add_episode(board, epsilon, ep, mean_of_rewards, mean_of_q_values)
             if ep % snapshot_game_every_n_episodes == 0:
                 experiment.snapshot_game(board_history, ep)
             if ep % 50 == 0:
@@ -235,10 +239,10 @@ def main():
             if ep > no_episodes_before_training:
                 train_step(batch_size)
             if ep % no_episodes_before_updating_target == 0:
-                print("Updating Model")
                 target_model.load_state_dict(copy.deepcopy(model.state_dict()))
             if ep % 1000 == 0:
                 experiment.save()
+                print("Saved game")
 
         experiment.save()
 
