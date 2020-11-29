@@ -47,7 +47,7 @@ model = nn.Sequential(
 batch_size = 5000  # number of experiences to sample
 discount_factor = 0.95  # used in q-learning equation (Bellman equation)
 target_model = copy.deepcopy(model)
-replay_buffer = deque(maxlen=15000)  # contains experiences (or episodes) [(state, action, reward, next_state, done),...]
+replay_buffer = deque(maxlen=30000)  # contains experiences (or episodes) [(state, action, reward, next_state, done),...]
 learning_rate = 1e-4  # optimizer for gradient descent within Adam
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) # Variant of SGD
@@ -57,7 +57,7 @@ min_epsilon = 0.01
 no_episodes_before_training = 1000
 no_episodes_before_updating_target = 100
 use_double_dqn = True
-snapshot_game_every_n_episodes = 100
+snapshot_game_every_n_episodes = 500
 
 job_name = input("What is the job name: ")
 
@@ -103,7 +103,6 @@ def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
         Q_values = model(state)
 
         available_Q_values = available_moves * Q_values
-        # V = torch.max(Q_values) # best q_value
 
         next_action: torch.Tensor = torch.argmax(available_Q_values)
         return int(next_action), int(done), torch.max(Q_values)
@@ -135,23 +134,11 @@ def sample_experiences(batch_size):
     actions = torch.tensor(actions, device=device)
     rewards = torch.tensor(rewards, device=device)
     dones = torch.tensor(dones, device=device)
-    print("type", states[0].dtype)
+
     return states, actions, rewards, next_states, dones
 
 
 def compute_reward(board, next_board, action, done):
-    '''
-    Here a reward is defined as the number of merges. If the max value of the
-    board has increase, add np.log2(next_max) * 0.1 to the reward.
-    '''
-    '''previous_max = np.max(board.state)
-    next_max = np.max(next_board.state)
-    no_empty_previous = board.number_of_empty_cells()
-    no_empty_next = next_board.number_of_empty_cells()
-    number_of_merges = (no_empty_next - no_empty_previous)+1  # number of merges done
-    reward = number_of_merges
-    if next_max > previous_max:
-        reward += np.log2(next_max)*0.1'''
     return next_board.merge_score() - board.merge_score()
 
 def play_one_step(board, epsilon):
@@ -162,7 +149,6 @@ def play_one_step(board, epsilon):
 
     reward = compute_reward(board, next_board, action, done)
 
-    # priority = compute_priority(board, reward, next_board)
     replay_buffer.append((board, action, reward, next_board, done))
     return next_board, action, reward, done, max_q_value
 

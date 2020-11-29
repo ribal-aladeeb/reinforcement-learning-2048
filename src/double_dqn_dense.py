@@ -41,11 +41,6 @@ model = nn.Sequential(
     torch.nn.Linear(in_features=512, out_features=4),
 ).double().to(device=device)
 
-b = Board2048().normalized().flattened_state_as_tensor()
-print(b)
-
-print(model(b))
-
 batch_size = 5000  # number of experiences to sample
 discount_factor = 0.95  # used in q-learning equation (Bellman equation)
 target_model = copy.deepcopy(model)
@@ -59,6 +54,8 @@ min_epsilon = 0.01
 no_episodes_before_training = 500
 no_episodes_before_updating_target = 50
 use_double_dqn = True
+snapshot_game_every_n_episodes = 500
+
 job_name = input("What is the job name: ")
 
 if job_name:
@@ -98,16 +95,15 @@ def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
     done = torch.max(available_moves) == 0
 
     if np.random.rand() < epsilon:
-        return np.random.randint(4), done
+        return np.random.randint(4), done, torch.zeros(size=(1,), device=device)
     else:
-        state = board.normalized().flattened_state_as_tensor().to(device)
+        state = board.normalized().state_as_4d_tensor().to(device)
         Q_values = model(state)
 
         available_Q_values = available_moves * Q_values
-        # V = torch.max(Q_values) # best q_value
 
         next_action: torch.Tensor = torch.argmax(available_Q_values)
-        return int(next_action), int(done)
+        return int(next_action), int(done), torch.max(Q_values)
 
 
 def sample_experiences(batch_size):
@@ -122,7 +118,6 @@ def sample_experiences(batch_size):
     states = torch.zeros((batch_size, 16), device=device).double()
     next_states = torch.zeros((batch_size, 16), device=device).double()
 
-    i = 0
     for experience in batch:
         board, action, reward, next_board, done = experience
         state = board.normalized().flattened_state_as_tensor().to(device)
@@ -130,38 +125,18 @@ def sample_experiences(batch_size):
         actions.append(action)
         rewards.append(reward)
         dones.append(int(done))
-        states[i] = state
-        next_states[i] = next_state
-        i += 1
-
-        # states.append(state)
-        # next_states.append(next_state)
+        states = torch.cat((states, state), dim=0)
+        next_states = torch.cat((next_states, next_state), dim=0)
 
     actions = torch.tensor(actions, device=device)
     rewards = torch.tensor(rewards, device=device)
     dones = torch.tensor(dones, device=device)
-    # states = torch.tensor(states, device=device)
-    # next_states = torch.tensor(next_states, device=device)
 
     return states, actions, rewards, next_states, dones
 
 
 def compute_reward(board, next_board, action, done):
-    '''
-    Here a reward is defined as the number of merges. If the max value of the
-    board has increase, add np.log2(next_max) * 0.1 to the reward.
-    '''
     return next_board.merge_score() - board.merge_score()
-    # changed the reward function
-    previous_max = np.max(board.state)
-    next_max = np.max(next_board.state)
-    no_empty_previous = board.number_of_empty_cells()
-    no_empty_next = next_board.number_of_empty_cells()
-    number_of_merges = (no_empty_next - no_empty_previous)+1  # number of merges done
-    reward = number_of_merges
-    if next_max > previous_max:
-        reward += np.log2(next_max)*0.1
-    return reward
 
 
 def play_one_step(board, epsilon):
@@ -172,7 +147,6 @@ def play_one_step(board, epsilon):
 
     reward = compute_reward(board, next_board, action, done)
 
-    # priority = compute_priority(board, reward, next_board)
     replay_buffer.append((board, action, reward, next_board, done))
     return next_board, action, reward, done
 
@@ -229,22 +203,31 @@ def main():
         for ep in range(no_episodes):
             board = Board2048()
             done = False
-            # board_history = []
+            board_history = []
+            rewards = []
+            q_values = []
             while not done:
                 epsilon = max((no_episodes_to_reach_epsilon - ep) / no_episodes_to_reach_epsilon, min_epsilon)  # value to determine how greedy the policy should be for that step
-                new_board, action, reward, done = play_one_step(board, epsilon)
-                # board_history.append((board, ['u', 'd', 'l', 'r'][int(action)], reward))
+                new_board, action, reward, done, max_q_value = play_one_step(board, epsilon)
+                board_history.append((board.state, ['u', 'd', 'l', 'r'][int(action)], reward))
+                rewards.append(reward)
+                q_values.append(max_q_value)
                 board = new_board
-            experiment.add_episode(board, epsilon, ep, reward)
-            if ep % 10 == 0:
+            mean_of_rewards = np.mean(np.array(rewards))
+            mean_of_q_values = torch.mean(torch.tensor(q_values))
+            experiment.add_episode(board, epsilon, ep, mean_of_rewards, mean_of_q_values)
+            if ep % snapshot_game_every_n_episodes == 0:
+                experiment.snapshot_game(board_history, ep)
+            if ep % 50 == 0:
                 print(f"Episode: {ep}: {board.merge_score()}, {np.max(board.state.flatten())}, {len(board._action_history)}")
             if ep > no_episodes_before_training:
                 train_step(batch_size)
             if ep % no_episodes_before_updating_target == 0:
-                print("Updating Model")
                 target_model.load_state_dict(copy.deepcopy(model.state_dict()))
             if ep % 1000 == 0:
                 experiment.save()
+                print("Saved game")
+
         experiment.save()
 
     except KeyboardInterrupt as e:
