@@ -2,10 +2,7 @@
 This will become a convolutional network
 '''
 from collections import deque
-from copy import Error
-from logging import error
 import pprint
-from torch import tensor
 from board import Board2048
 import torch
 import torch.nn as nn
@@ -14,6 +11,8 @@ import logging
 import copy
 import os
 from experiments import Experiment
+
+
 if not torch.cuda.is_available():
     logging.warning("No GPU: Cuda is not utilized")
     device = "cpu"
@@ -43,7 +42,6 @@ model = nn.Sequential(
     nn.Linear(2*2*64, 64),
     nn.Linear(64, 4)
 ).double().to(device=device)
-
 
 batch_size = 5000  # number of experiences to sample
 discount_factor = 0.95  # used in q-learning equation (Bellman equation)
@@ -111,7 +109,7 @@ def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
     if np.random.rand() < epsilon:
         return np.random.randint(4), done, torch.zeros(size=(1,), device=device)
     else:
-        state = board.normalized().state_as_4d_tensor().to(device)
+        state = board.log_scale().state_as_4d_tensor().to(device)
         Q_values = model(state)
         Q_values_normal = Q_values - torch.min(Q_values)* torch.max(Q_values) - torch.min(Q_values)
 
@@ -134,9 +132,9 @@ def sample_experiences(batch_size):
 
     for experience in batch:
         board, action, reward, next_board, done = experience
-        state = board.normalized().state_as_4d_tensor().to(device)
+        state = board.log_scale().state_as_4d_tensor().to(device)
 
-        next_state = next_board.normalized().state_as_4d_tensor().to(device)
+        next_state = next_board.log_scale().state_as_4d_tensor().to(device)
         actions.append(action)
         rewards.append(reward)
         dones.append(int(done))
@@ -234,7 +232,7 @@ def main():
             experiment.add_episode(board, epsilon, ep, mean_of_rewards, mean_of_q_values)
             if ep % snapshot_game_every_n_episodes == 0:
                 experiment.snapshot_game(board_history, ep)
-            if ep % 50 == 0:
+            if ep % 10 == 0:
                 print(f"Episode: {ep}: {board.merge_score()}, {np.max(board.state.flatten())}, {len(board._action_history)}")
             if ep > no_episodes_before_training:
                 train_step(batch_size)

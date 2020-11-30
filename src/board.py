@@ -221,6 +221,15 @@ class Board2048:
         normalized.state = normalized.state / maxvalue
         return normalized
 
+    def log_scale(self):
+        clone: Board2048 = self.clone()
+        x = clone.state
+        for row in range(x.shape[0]):
+            for column in range(x.shape[1]):
+                x[row][column]= 0 if x[row][column]==0 else int(np.log2(x[row][column]))
+
+        return clone
+
     def flattened_state_as_tensor(self):
         return torch.from_numpy(self.state.flatten()).double()
 
