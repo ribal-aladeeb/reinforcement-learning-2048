@@ -208,10 +208,10 @@ def main():
                 new_board, action, reward, done, max_q_value = play_one_step(board, epsilon)
                 board_history.append((board.state, ['u', 'd', 'l', 'r'][int(action)], reward))
                 rewards.append(reward)
-                q_values.append(max_q_value)
+                q_values.append(float(max_q_value))
                 board = new_board
             mean_of_rewards = np.mean(np.array(rewards))
-            mean_of_q_values = torch.mean(torch.tensor(q_values))
+            mean_of_q_values = np.mean(np.array(q_values))
             experiment.add_episode(board, epsilon, ep, mean_of_rewards, mean_of_q_values)
             if ep % snapshot_game_every_n_episodes == 0:
                 experiment.snapshot_game(board_history, ep)
