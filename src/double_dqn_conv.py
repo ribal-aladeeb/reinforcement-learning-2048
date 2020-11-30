@@ -44,20 +44,36 @@ model = nn.Sequential(
     nn.Linear(64, 4)
 ).double().to(device=device)
 
-batch_size = 2500  # number of experiences to sample
+
+batch_size = 5000  # number of experiences to sample
 discount_factor = 0.95  # used in q-learning equation (Bellman equation)
 target_model = copy.deepcopy(model)
-replay_buffer = deque(maxlen=50000)  # contains experiences (or episodes) [(state, action, reward, next_state, done),...]
-learning_rate = 1e-3  # optimizer for gradient descent within Adam
+replay_buffer = deque(maxlen=15000)  # contains experiences (or episodes) [(state, action, reward, next_state, done),...]
+learning_rate = 1e-4  # optimizer for gradient descent within Adam
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) # Variant of SGD
-no_episodes = 50000
+no_episodes = 25000
 no_episodes_to_reach_epsilon = 2000
-min_epsilon = 0.0001
-no_episodes_before_training = 100
+min_epsilon = 0.01
+no_episodes_before_training = 5000 # set to 5000 to wait for fill up
 no_episodes_before_updating_target = 100
+no_episodes_to_fill_up_existing_model_replay_buffer = 5000 # set to 0 if you want to not fill up the replay buffer.
 use_double_dqn = True
-snapshot_game_every_n_episodes = 1000
+snapshot_game_every_n_episodes = 500
+
+#model_path = ""
+model_path = "C:\\Users\\jonat\dev\\reinforcement-learning-2048\\experiments\\e2-no-eps-to-epsilon-2000\\binary\\model.tar"
+loss_fn = nn.MSELoss(reduction='sum')
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
+
+if model_path:
+    checkpoint = torch.load(model_path)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    target_model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    loss_fn = checkpoint["loss"]
+    model.eval()
+
 
 job_name = input("What is the job name: ")
 
@@ -97,9 +113,9 @@ def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
     else:
         state = board.normalized().state_as_4d_tensor().to(device)
         Q_values = model(state)
+        Q_values_normal = Q_values - torch.min(Q_values)* torch.max(Q_values) - torch.min(Q_values)
 
-        available_Q_values = available_moves * Q_values
-
+        available_Q_values = available_moves * Q_values_normal
         next_action: torch.Tensor = torch.argmax(available_Q_values)
         return int(next_action), int(done), torch.max(Q_values)
 
@@ -140,7 +156,6 @@ def compute_reward(board, next_board, action, done):
 def play_one_step(board, epsilon):
     action, done, max_q_value = epsilon_greedy_policy(board, epsilon)
 
-    # take the board and perform action
     next_board = board.peek_action(action)
 
     reward = compute_reward(board, next_board, action, done)
@@ -206,10 +221,14 @@ def main():
             q_values = []
             while not done:
                 epsilon = max((no_episodes_to_reach_epsilon - ep) / no_episodes_to_reach_epsilon, min_epsilon)  # value to determine how greedy the policy should be for that step
+
+                if ep < no_episodes_to_fill_up_existing_model_replay_buffer:
+                    epsilon = 0
                 new_board, action, reward, done, max_q_value = play_one_step(board, epsilon)
                 board_history.append((board.state, ['u', 'd', 'l', 'r'][int(action)], reward))
                 rewards.append(reward)
                 q_values.append(max_q_value)
+                # board.show(ignore_zeros=True)
                 board = new_board
             mean_of_rewards = np.mean(np.array(rewards))
             mean_of_q_values = torch.mean(torch.tensor(q_values))
@@ -220,7 +239,7 @@ def main():
                 print(f"Episode: {ep}: {board.merge_score()}, {np.max(board.state.flatten())}, {len(board._action_history)}")
             if ep > no_episodes_before_training:
                 train_step(batch_size)
-            if ep % no_episodes_before_updating_target == 0:
+            if ep % no_episodes_before_updating_target == 0 and ep >= no_episodes_to_fill_up_existing_model_replay_buffer:
                 target_model.load_state_dict(copy.deepcopy(model.state_dict()))
             if ep % 1000 == 0:
                 experiment.save()

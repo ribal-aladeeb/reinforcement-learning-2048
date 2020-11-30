@@ -21,18 +21,7 @@ else:
 
 pp = pprint.PrettyPrinter(indent=4)
 
-'''
-When using ConvNets, the following formula is useful for knowing a convolution's feature map output shape
 
-SHAPE = ((w + 2p) - k + s)/s
-where
-w: width of input feature (assuming width == height)
-p: padding value (a padding of 1 means adds 2 pixels to each axis)
-k: kernel size (assuming kernel is square)
-s: stride
-
-the resulting output feature map (assuming they are all squares) will be SHAPE x SHAPE
-'''
 model = nn.Sequential(
     torch.nn.Linear(in_features=16, out_features=512),
     torch.nn.ReLU(),
