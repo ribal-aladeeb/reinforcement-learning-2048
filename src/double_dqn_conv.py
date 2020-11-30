@@ -61,8 +61,8 @@ no_episodes_to_fill_up_existing_model_replay_buffer = 5000 # set to 0 if you wan
 use_double_dqn = True
 snapshot_game_every_n_episodes = 500
 
-#model_path = ""
-model_path = "C:\\Users\\jonat\dev\\reinforcement-learning-2048\\experiments\\e2-no-eps-to-epsilon-2000\\binary\\model.tar"
+model_path = ""
+#model_path = "C:\\Users\\jonat\dev\\reinforcement-learning-2048\\experiments\\e2-no-eps-to-epsilon-2000\\binary\\model.tar"
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
