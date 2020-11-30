@@ -2,10 +2,7 @@
 This will become a convolutional network
 '''
 from collections import deque
-from copy import Error
-from logging import error
 import pprint
-from torch import tensor
 from board import Board2048
 import torch
 import torch.nn as nn
@@ -14,6 +11,8 @@ import logging
 import copy
 import os
 from experiments import Experiment
+
+
 if not torch.cuda.is_available():
     logging.warning("No GPU: Cuda is not utilized")
     device = "cpu"
@@ -44,7 +43,6 @@ model = nn.Sequential(
     nn.Linear(64, 4)
 ).double().to(device=device)
 
-
 batch_size = 5000  # number of experiences to sample
 discount_factor = 0.95  # used in q-learning equation (Bellman equation)
 target_model = copy.deepcopy(model)
@@ -52,10 +50,10 @@ replay_buffer = deque(maxlen=15000)  # contains experiences (or episodes) [(stat
 learning_rate = 1e-4  # optimizer for gradient descent within Adam
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) # Variant of SGD
-no_episodes = 25000
-no_episodes_to_reach_epsilon = 2000
-min_epsilon = 0.01
-no_episodes_before_training = 5000 # set to 5000 to wait for fill up
+no_episodes = 100000
+no_episodes_to_reach_epsilon = 1000
+min_epsilon = 0.0001
+no_episodes_before_training = 1
 no_episodes_before_updating_target = 100
 no_episodes_to_fill_up_existing_model_replay_buffer = 5000 # set to 0 if you want to not fill up the replay buffer.
 use_double_dqn = True
@@ -111,7 +109,7 @@ def epsilon_greedy_policy(board, epsilon=0) -> int:  # p.634
     if np.random.rand() < epsilon:
         return np.random.randint(4), done, torch.zeros(size=(1,), device=device)
     else:
-        state = board.normalized().state_as_4d_tensor().to(device)
+        state = board.log_scale().state_as_4d_tensor().to(device)
         Q_values = model(state)
         Q_values_normal = Q_values - torch.min(Q_values)* torch.max(Q_values) - torch.min(Q_values)
 
@@ -134,9 +132,9 @@ def sample_experiences(batch_size):
 
     for experience in batch:
         board, action, reward, next_board, done = experience
-        state = board.normalized().state_as_4d_tensor().to(device)
+        state = board.log_scale().state_as_4d_tensor().to(device)
 
-        next_state = next_board.normalized().state_as_4d_tensor().to(device)
+        next_state = next_board.log_scale().state_as_4d_tensor().to(device)
         actions.append(action)
         rewards.append(reward)
         dones.append(int(done))
@@ -235,7 +233,7 @@ def main():
             experiment.add_episode(board, epsilon, ep, mean_of_rewards, mean_of_q_values)
             if ep % snapshot_game_every_n_episodes == 0:
                 experiment.snapshot_game(board_history, ep)
-            if ep % 50 == 0:
+            if ep % 10 == 0:
                 print(f"Episode: {ep}: {board.merge_score()}, {np.max(board.state.flatten())}, {len(board._action_history)}")
             if ep > no_episodes_before_training:
                 train_step(batch_size)
