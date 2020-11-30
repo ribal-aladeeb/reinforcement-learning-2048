@@ -52,27 +52,27 @@ replay_buffer = deque(maxlen=15000)  # contains experiences (or episodes) [(stat
 learning_rate = 1e-4  # optimizer for gradient descent within Adam
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate) # Variant of SGD
-no_episodes = 25000
-no_episodes_to_reach_epsilon = 2000
+no_episodes = 30000
+no_episodes_to_reach_epsilon = 500
 min_epsilon = 0.01
-no_episodes_before_training = 5000 # set to 5000 to wait for fill up
+no_episodes_before_training = 1000
 no_episodes_before_updating_target = 100
-no_episodes_to_fill_up_existing_model_replay_buffer = 5000 # set to 0 if you want to not fill up the replay buffer.
+no_episodes_to_fill_up_existing_model_replay_buffer = 50 # set to 0 if you want to not fill up the replay buffer.
 use_double_dqn = True
 snapshot_game_every_n_episodes = 500
 
 model_path = ""
-#model_path = "C:\\Users\\jonat\dev\\reinforcement-learning-2048\\experiments\\e2-no-eps-to-epsilon-2000\\binary\\model.tar"
+#model_path = "C:\\Users\\jonat\dev\\reinforcement-learning-2048\\experiments\\e2-cont\\binary\\model.pt"
 loss_fn = nn.MSELoss(reduction='sum')
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 
 if model_path:
     checkpoint = torch.load(model_path)
-    model.load_state_dict(checkpoint['model_state_dict'])
-    target_model.load_state_dict(checkpoint['model_state_dict'])
-    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-    loss_fn = checkpoint["loss"]
-    model.eval()
+    # model.load_state_dict(checkpoint['model_state_dict'])
+    # target_model.load_state_dict(checkpoint['model_state_dict'])
+    # optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    # loss_fn = checkpoint["loss"]
+    checkpoint.eval()
 
 
 job_name = input("What is the job name: ")
@@ -227,11 +227,10 @@ def main():
                 new_board, action, reward, done, max_q_value = play_one_step(board, epsilon)
                 board_history.append((board.state, ['u', 'd', 'l', 'r'][int(action)], reward))
                 rewards.append(reward)
-                q_values.append(max_q_value)
-                # board.show(ignore_zeros=True)
+                q_values.append(float(max_q_value))
                 board = new_board
             mean_of_rewards = np.mean(np.array(rewards))
-            mean_of_q_values = torch.mean(torch.tensor(q_values))
+            mean_of_q_values = np.mean(np.array(q_values))
             experiment.add_episode(board, epsilon, ep, mean_of_rewards, mean_of_q_values)
             if ep % snapshot_game_every_n_episodes == 0:
                 experiment.snapshot_game(board_history, ep)
