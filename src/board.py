@@ -137,7 +137,7 @@ class Board2048:
 
     def available_moves(self) -> Dict[str, Board2048]:
         moves = ['up', 'down', 'left', 'right']
-        mapping = dict()
+        mapping = {}
         for i, move in enumerate(moves):
             board = self.peek_action(move)
             if not (self.state == board.state).all():
@@ -238,6 +238,9 @@ class Board2048:
 
     def number_of_empty_cells(self) -> int:
         return np.where(self.state==0)[0].shape[0]
+
+    def get_max_tile(self):
+        return np.max(self.state)
 
 
 
