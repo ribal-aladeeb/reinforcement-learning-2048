@@ -260,8 +260,6 @@ def basic_updown_algorithm(k=4):
     board.show()
     return board
 
-
-
 if __name__ == "__main__":
     board = Board2048()
 
@@ -272,5 +270,4 @@ if __name__ == "__main__":
     print(f"Final Score: {board.merge_score()}")
     board._action_history.append(None)
 
-    # [print(state) for state in zip(board._board_state_history, board._action_history)]
 

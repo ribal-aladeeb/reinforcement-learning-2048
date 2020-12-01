@@ -122,5 +122,5 @@ class SSS:
 if __name__ == "__main__":
 
     sss = SSS(Board2048())
-    # sss.A_star()
-    sss.best_first()
+    sss.A_star()
+    #sss.best_first()
