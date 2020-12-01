@@ -44,7 +44,7 @@ class Player:
             done = torch.max(available_moves) == 0
 
             state = board.normalized().state_as_4d_tensor().to(self.device)
-            if random_policy:
+            if not random_policy:
                 Q_values = self.model(state)
             else:
                 Q_values = torch.rand((4,))
