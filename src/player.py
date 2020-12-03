@@ -96,14 +96,14 @@ def main():
     #     print("Please provide the name of the experiment folder (only provide the name that is found in the experiments folder, not the path).")
     #     exit()
 
-    print("Random Games")
-    random_player = Player(experiment_folder="random_baseline", resumed=False)
-    random_player.play_n_games(15000, random_policy=True)
+
+    # print("Random Games")
+    # random_player = Player(experiment_folder="random_baseline", resumed=False)
+    # random_player.play_n_games(15000, random_policy=True)
 
     print("Upleft games")
     upleft_player = Player(experiment_folder="upleft_baseline", resumed=False)
-    upleft_player.play_n_games(15000,k=4)
-
+    upleft_player.play_n_games(15000, upleft=True)
 
 
 if __name__ == "__main__":
