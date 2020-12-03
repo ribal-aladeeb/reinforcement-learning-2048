@@ -56,8 +56,8 @@ class Player:
             next_action = torch.argmax(available_Q_values)
             next_board = board.peek_action(next_action)
             reward = self.reward_func(board, next_board, next_action, done)
-
-            single_game_history.append((board.state, ['u', 'd', 'l', 'r'][int(next_action)], reward))
+            merge_score = board.merge_score()
+            single_game_history.append((board.state, ['u', 'd', 'l', 'r'][int(next_action)], reward, merge_score))
             board = next_board
 
         self.games_history.append(single_game_history)
@@ -69,14 +69,14 @@ class Player:
         single_game_history = []
         while True:
             board = board.peek_action("up")
-            single_game_history.append((board.state, 'up', board.simple_score()))
+            single_game_history.append((board.state, 'up', board.simple_score(), board.merge_score()))
             board = board.peek_action("left")
-            single_game_history.append((board.state, 'left', board.simple_score()))
+            single_game_history.append((board.state, 'left', board.simple_score(), board.merge_score()))
             if simple_score == board.simple_score():
                 board = board.peek_action('down')
-                single_game_history.append((board.state, 'down', board.simple_score()))
+                single_game_history.append((board.state, 'down', board.simple_score(), board.merge_score()))
                 board = board.peek_action('right')
-                single_game_history.append((board.state, 'r', board.simple_score()))
+                single_game_history.append((board.state, 'r', board.simple_score(), board.merge_score()))
                 if simple_score == board.simple_score():
                     break
             simple_score = board.simple_score()
@@ -97,13 +97,13 @@ def main():
     #     exit()
 
 
-    # print("Random Games")
-    # random_player = Player(experiment_folder="random_baseline", resumed=False)
-    # random_player.play_n_games(15000, random_policy=True)
+    print("Random Games")
+    random_player = Player(experiment_folder="random_baseline", resumed=False)
+    random_player.play_n_games(1000, random_policy=True)
 
     print("Upleft games")
     upleft_player = Player(experiment_folder="upleft_baseline", resumed=False)
-    upleft_player.play_n_games(15000, upleft=True)
+    upleft_player.play_n_games(1000, upleft=True)
 
 
 if __name__ == "__main__":
