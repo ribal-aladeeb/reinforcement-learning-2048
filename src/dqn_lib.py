@@ -164,9 +164,13 @@ def train_step(batch_size: int, discount_factor: int, model: torch.nn.Sequential
     return loss
 
 
-def training_loop(replay_buffer_length, no_episodes, no_episodes_to_reach_epsilon, no_episodes_to_fill_up_existing_model_replay_buffer, min_epsilon, model, reward_function, board_to_tensor_function, device, experiment, snapshot_game_every_n_episodes, no_episodes_before_training, batch_size, discount_factor, target_model, loss_fn, optimizer, use_double_dqn, no_episodes_before_updating_target, extract_samples_function):
+def training_loop(replay_buffer_length, no_episodes, no_episodes_to_reach_epsilon, no_episodes_to_fill_up_existing_model_replay_buffer, min_epsilon, model, reward_function, board_to_tensor_function, device, experiment, snapshot_game_every_n_episodes, no_episodes_before_training, batch_size, discount_factor, target_model, loss_fn, optimizer, use_double_dqn, no_episodes_before_updating_target, extract_samples_function, replay_buffer_override=None):
     try:
-        replay_buffer = deque(maxlen=replay_buffer_length)
+        if replay_buffer_override:
+            replay_buffer = replay_buffer_override
+        else:
+            replay_buffer = deque(maxlen=replay_buffer_length)
+
         for ep in range(no_episodes):
             print(ep)
             board = Board2048()

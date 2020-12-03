@@ -4,34 +4,37 @@ import torch
 import logging
 import sys
 from tqdm import tqdm
-
-
-def default_reward_func(b: Board2048, next: Board2048, action, done) -> int:
-    return next.merge_score() - b.merge_score()
+from dqn_lib import reward_func_merge_score
 
 
 class Player:
 
-    def __init__(self, experiment_folder: str, reward_func=default_reward_func):
+    def __init__(self, experiment_folder: str, resumed: bool =True, reward_func=reward_func_merge_score):
 
-        self.experiment = experiments.Experiment(resumed=True,
+        self.experiment = experiments.Experiment(resumed=resumed,
                                                  folder_name=experiment_folder,
                                                  )
         if not torch.cuda.is_available():
             logging.warning("No GPU: Cuda is not utilized")
-            device = "cpu"
+            self.device = "cpu"
         else:
-            device = "cuda:0"
+            self.device = "cuda:0"
 
-        self.model = self.experiment.model
+        if resumed:
+            self.model = self.experiment.model
+        else:
+            self.model = None
+
         self.games_history = []
-        self.device = device
         self.reward_func = reward_func
 
-    def play_n_games(self, n=1, random_policy=False):
+    def play_n_games(self, n=1, random_policy=False, upleft=False):
         print(f'Agent will proceed to play {n} games')
         for i in tqdm(range(n)):
-            self.play_game(random_policy=random_policy)
+            if upleft:
+                self.basic_upleft_algorithm(k=4)
+            else:
+                self.play_game(random_policy=random_policy)
         self.experiment.save_games_played(self.games_history)
 
     def play_game(self, random_policy=False):
@@ -47,7 +50,7 @@ class Player:
             if not random_policy:
                 Q_values = self.model(state)
             else:
-                Q_values = torch.rand((4,))
+                Q_values = torch.rand((4,), device=self.device)
             available_Q_values = available_moves * Q_values
 
             next_action = torch.argmax(available_Q_values)
@@ -60,18 +63,47 @@ class Player:
         self.games_history.append(single_game_history)
         return single_game_history
 
+    def basic_upleft_algorithm(self, k=4):
+        board = Board2048(k=k)
+        simple_score = board.simple_score()
+        single_game_history = []
+        while True:
+            board = board.peek_action("up")
+            single_game_history.append((board.state, 'up', board.simple_score()))
+            board = board.peek_action("left")
+            single_game_history.append((board.state, 'left', board.simple_score()))
+            if simple_score == board.simple_score():
+                board = board.peek_action('down')
+                single_game_history.append((board.state, 'down', board.simple_score()))
+                board = board.peek_action('right')
+                single_game_history.append((board.state, 'r', board.simple_score()))
+                if simple_score == board.simple_score():
+                    break
+            simple_score = board.simple_score()
+        self.games_history.append(single_game_history)
+        return board
+
+
+    def play_state_space_search_game(self, sss_algo=None):
+        pass
+
 
 def main():
 
-    if len(sys.argv) > 1:
-        exp_folder = sys.argv[1]
-    else:
-        print("Please provide the name of the experiment folder (only provide the name that is found in the experiments folder, not the path).")
-        exit()
+    # if len(sys.argv) > 1:
+    #     exp_folder = sys.argv[1]
+    # else:
+    #     print("Please provide the name of the experiment folder (only provide the name that is found in the experiments folder, not the path).")
+    #     exit()
 
-    player = Player(experiment_folder=exp_folder)
+    print("Random Games")
+    random_player = Player(experiment_folder="random_baseline", resumed=False)
+    random_player.play_n_games(15000, random_policy=True)
 
-    game_history = player.play_n_games(100)
+    print("Upleft games")
+    upleft_player = Player(experiment_folder="upleft_baseline", resumed=False)
+    upleft_player.play_n_games(15000,k=4)
+
 
 
 if __name__ == "__main__":
