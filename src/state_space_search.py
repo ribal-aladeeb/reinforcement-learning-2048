@@ -5,16 +5,19 @@ import numpy as np
 from typing import List
 import math
 
+
 class Node():
-    def __init__(self, b: Board2048, parent=None, cost=0):
-        self.parent = None
+    def __init__(self, b: Board2048, parent=None, cost=0, move=None):
+        self.parent = parent
         self.board = b
         self.cost = cost
-        self.is_root = True if self.parent == None else False
+        self.move = move
+
+    def is_root(self):
+        return self.parent == None
 
     def HofN(self, goal_tile=2048):
         return self.board.merge_score() // 2
-
 
     # def HofN(self, goal_tile=2048):
     #     'computes heuristic func used for informed search'
@@ -36,7 +39,7 @@ class Node():
 
     def generate_children(self) -> List[Board2048]:
         moves: dict = self.board.available_moves()
-        return list(moves.values())
+        return moves
 
 
 def A_star(b: Board2048):
@@ -83,8 +86,11 @@ def A_star(b: Board2048):
         closed_list[hashed] = current_node
 
         #-- Add children in open list --#
-        for board in current_node.generate_children():
-            child_node = Node(b=board, parent=current_node, cost=current_node.cost+1)
+        moves: dict = current_node.generate_children()
+        for m in moves:
+            move: str = m
+            next_board: Board2048 = moves[m]
+            child_node = Node(b=next_board, parent=current_node, cost=current_node.cost+1, move=move)
             expanded_nodes += 1
             openlist.put((child_node.FofN(), expanded_nodes, child_node))
 
@@ -101,6 +107,14 @@ if __name__ == "__main__":
     print(b)
     print()
     result = A_star(b)
+    sol = result['current_node']
 
-    print(f'Solution found:\n{result["current_node"].board}')
+    for _ in range(5):
+        print(type(sol))
+        print(sol)
+        print(f'move: {sol.move}, board:\n{sol.board}')
+        print()
+        sol = sol.parent
+
+    # print(f'Solution found:\n{result["current_node"].board}')
     print(result)
