@@ -12,6 +12,7 @@ import copy
 from experiments import Experiment
 import os
 from device import device
+from state_space_search import generate_replay_buffer_using_A_star
 from configs.double_dqn_sss import HYPERPARAMS, model, target_model, loss_fn, optimizer, batch_size, discount_factor, target_model, replay_buffer_length, learning_rate, \
 loss_fn, optimizer, no_episodes, no_episodes_to_reach_epsilon, min_epsilon, no_episodes_before_training, no_episodes_before_updating_target, use_double_dqn, snapshot_game_every_n_episodes, no_episodes_to_fill_up_existing_model_replay_buffer
 
@@ -61,7 +62,7 @@ def main():
         use_double_dqn,
         no_episodes_before_updating_target,
         extract_samples_conv,
-        replay_buffer_override=deque(maxlen=3000)
+        replay_buffer_override=generate_replay_buffer_using_A_star(50, 50000)
         )
 
 if __name__ == "__main__":
