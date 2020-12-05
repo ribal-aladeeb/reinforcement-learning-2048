@@ -1,10 +1,14 @@
 # Reinforcement Learning 2048
 
-We build a reinforcement learning agent using Deep Q-learning neural networks.
+We implemented a reinforcement learning algorithm capable of training an agent in playing the sliding tile game 2048 using Deep Q-learning neural networks.
+
+Though our max tile reached was only 1024, we found that our models were in fact learning and performed better than random and a simple up-left policy.
+
+We utilize Deep-Q-Learning on both convolutional and linear networks using torch for training and numpy for the environment representation.
 
 ## Running an Experiment
 
-#### Model Configuration
+### Model Configuration
 ```
 cd ./src/configs/
 ```
@@ -46,14 +50,47 @@ use_double_dqn = True  # Use the Double DQN Variant
 snapshot_game_every_n_episodes = 500 # Snapshot the game, every n episodes so that playback of games is possible.
 ```
 
-#### Execute Experiment
+### Execute Experiment
 Execute the file associated with the config file.
 ```
 cd src
 python3 double_dqn_conv.py
 ```
 
+The program will begin and ask you for a job name. Every N episodes it prints the merge score, max tile and number of actions takens so that you can see live results in the terminal.
 ```
-What is the job name:
+What is the job name: job1
+...
 Episode: 890: 1860, 128, 144
+```
+
+### Experiment Analysis
+Once the experiment has completed, an folder with the name of the job is created in the `/experiments` folder.
+
+Inside the experiment folder there are 2 subfolders `/binary` and `/text`. Inside `/binary` there are a collection of episode information, hyperparameter information, snapshotted board histories and a snapshot of the model at the end of the experiment.
+
+Models can be re-loaded into an experiment by using the `resumed` flag on the `Experiment` class constructor with a file path to the existing experiment folder.
+
+Analysis of these experiments is done in the notebook `experiment_analysis.ipynb` where we conduct an analysis on any particular experiment. Plots for merge score, number of moves and max tiles are generated as well as a histogram showing the frequency distribution of max tiles within all the episodes played.
+
+## Repository Structure
+```
+src/
+    board.py => Board2048 game implemented using numpy.
+
+    double_dqn_conv_sss.py => Driver that utilizes A* to load replay buffer with successful games
+
+    double_dqn_conv.py => Driver that utilizes convolution neural networks to train an agent to play 2048
+
+    double_dqn_dense.py => Driver that utilizes linear neural networks to train an agent to play 2048
+
+    dqn_lib.py => Deep-Q-Networks Library which houses functionality used by the drivers to train, back-propagate, choose optional actions and sample experiences from the replay buffer.
+
+    experiments.py => Experiments class used to create and resume running of jobs
+
+    player.py => Player class is used to load existing policys from an experiment and simply running games using the existing policy (includes random and up-left algorithm)
+
+    state_space_search.py => A* implementation to baseline our model against.
+
+experiments/ -> notebooks and experiments
 ```
