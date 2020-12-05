@@ -62,7 +62,7 @@ def main():
         use_double_dqn,
         no_episodes_before_updating_target,
         extract_samples_conv,
-        replay_buffer_override=generate_replay_buffer_using_A_star(50, 50000)
+        replay_buffer_override=generate_replay_buffer_using_A_star(100, replay_buffer_length)
         )
 
 if __name__ == "__main__":
