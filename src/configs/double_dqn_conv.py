@@ -23,6 +23,7 @@ model = nn.Sequential(
     nn.ReLU(),
     nn.Flatten(),  # each feature map is 2x2 with 128 features
     nn.Linear(2*2*64, 64),
+    nn.ReLU(),
     nn.Linear(64, 4)
 ).double().to(device=device)
 
